@@ -1,0 +1,5 @@
+
+{
+  "name": "Reddit Post Scraper",
+  "description": "An application to fetch and display posts from a specified Reddit URL, with options to sort by 'hot' or 'new'. It directly uses Reddit's JSON endpoints for scraping."
+}

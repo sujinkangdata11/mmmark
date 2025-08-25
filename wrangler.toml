@@ -1,0 +1,10 @@
+name = "reddit-api-proxy"
+main = "cloudflare-worker.js"
+compatibility_date = "2023-12-18"
+
+[env.production]
+name = "reddit-api-proxy"
+
+[[routes]]
+pattern = "*your-domain.com/api/reddit/*"
+zone_name = "your-domain.com"

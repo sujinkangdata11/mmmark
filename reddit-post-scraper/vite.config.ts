@@ -12,18 +12,6 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      },
-      server: {
-        proxy: {
-          '/api/reddit': {
-            target: 'https://www.reddit.com',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/api\/reddit/, ''),
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; WebApp/1.0)'
-            }
-          }
-        }
       }
     };
 });
