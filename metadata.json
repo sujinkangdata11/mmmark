@@ -1,0 +1,5 @@
+{
+  "name": "AI Marketing Automation Hub",
+  "description": "A dashboard to manage and automate marketing tasks for Reddit, Twitter, and YouTube using AI-powered prompts and memo logging.",
+  "requestFramePermissions": []
+}
