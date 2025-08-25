@@ -71,8 +71,8 @@ export class RedditService {
       // r/ 접두사 제거 (있다면)
       const cleanSubredditName = subredditName.replace(/^r\//, '');
       
-      // Cloudflare Worker URL (배포 후 실제 URL로 교체 필요)
-      const workerUrl = 'https://your-worker.your-subdomain.workers.dev';
+      // Cloudflare Worker URL
+      const workerUrl = 'https://be909f4b-marketing.anime-toon-7923.workers.dev';
       const apiUrl = `${workerUrl}/api/reddit/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
       
       console.log(`🔍 Fetching from Cloudflare Worker: ${apiUrl}`);
