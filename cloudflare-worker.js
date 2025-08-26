@@ -13,6 +13,10 @@ async function generateOAuth1Signature(method, url, params, consumerSecret, toke
 
   const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
   
+  // 디버깅 로그 추가
+  console.log('[OAUTH DEBUG] Signature Base String:', signatureBaseString);
+  console.log('[OAUTH DEBUG] Signing Key (앞 10글자):', signingKey.substring(0, 10) + '...');
+  
   const encoder = new TextEncoder();
   const keyData = encoder.encode(signingKey);
   const messageData = encoder.encode(signatureBaseString);
@@ -28,20 +32,28 @@ async function generateOAuth1Signature(method, url, params, consumerSecret, toke
   const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
   const base64Signature = btoa(String.fromCharCode(...new Uint8Array(signature)));
   
+  console.log('[OAUTH DEBUG] 생성된 서명 (앞 10글자):', base64Signature.substring(0, 10) + '...');
   return base64Signature;
 }
 
 // OAuth 1.0a 헤더 생성
 async function generateOAuth1Header(method, url, additionalParams, config) {
+  const currentTimestamp = Math.floor(Date.now() / 1000);
   const oauth = {
     oauth_consumer_key: config.consumerKey,
     oauth_token: config.accessToken,
     oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+    oauth_timestamp: currentTimestamp.toString(),
     oauth_nonce: Array.from(crypto.getRandomValues(new Uint8Array(16)), 
       byte => byte.toString(16).padStart(2, '0')).join(''),
     oauth_version: '1.0'
   };
+
+  // 타임스탬프 디버깅
+  const currentTime = new Date();
+  console.log('[OAUTH DEBUG] 현재 시간:', currentTime.toISOString());
+  console.log('[OAUTH DEBUG] 타임스탬프:', currentTimestamp);
+  console.log('[OAUTH DEBUG] 타임스탬프 변환:', new Date(currentTimestamp * 1000).toISOString());
 
   const allParams = { ...oauth, ...additionalParams };
   
@@ -60,6 +72,7 @@ async function generateOAuth1Header(method, url, additionalParams, config) {
     .map(key => `${encodeURIComponent(key)}="${encodeURIComponent(oauth[key])}"`)
     .join(', ');
 
+  console.log('[OAUTH DEBUG] 생성된 Authorization 헤더:', authHeader);
   return authHeader;
 }
 
@@ -122,7 +135,7 @@ export default {
     // Twitter API 프록시
     if (path === '/upload-media') {
       try {
-        // Twitter API 키 설정 (환경변수에서 가져오기)
+        // Twitter API 키 설정 (Secrets에서 가져오기)
         const config = {
           consumerKey: env.TWITTER_CONSUMER_KEY,
           consumerSecret: env.TWITTER_CONSUMER_SECRET,
@@ -130,6 +143,15 @@ export default {
           accessTokenSecret: env.TWITTER_ACCESS_TOKEN_SECRET,
           bearerToken: env.TWITTER_BEARER_TOKEN
         };
+
+        // 긴급 디버깅: 실제 env 객체 내용 확인
+        console.log('[WORKER EMERGENCY DEBUG] env 객체 키 목록:', Object.keys(env));
+        console.log('[WORKER EMERGENCY DEBUG] API 키 길이 확인:', {
+          consumerKey: config.consumerKey?.length || 0,
+          consumerSecret: config.consumerSecret?.length || 0,
+          accessToken: config.accessToken?.length || 0,
+          accessTokenSecret: config.accessTokenSecret?.length || 0
+        });
 
         // 디버깅: 환경변수 로딩 상태 확인
         console.log('[WORKER DEBUG] 환경변수 상태:', {
@@ -192,12 +214,15 @@ export default {
           });
 
         } else if (command === 'APPEND') {
-          // 2. APPEND 단계
+          // 2. APPEND 단계 - 파일 업로드에서는 media 파라미터를 서명에서 제외
           const appendParams = {
             command: 'APPEND',
             media_id: formData.get('media_id'),
             segment_index: formData.get('segment_index')
+            // 주의: media 파일은 서명에 포함하지 않음
           };
+
+          console.log('[OAUTH DEBUG] APPEND 파라미터 (서명용):', appendParams);
 
           const authHeader = await generateOAuth1Header(
             'POST',

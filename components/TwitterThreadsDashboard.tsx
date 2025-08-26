@@ -449,7 +449,16 @@ ex)
     // 4. Twitter 서비스 초기화
     console.log('[DEBUG] Twitter 서비스 초기화');
     addLog('[디버그] Twitter 서비스 초기화 중...', 'info');
-    twitterService.initialize(twitterConfig);
+    
+    try {
+      twitterService.initialize(twitterConfig);
+      console.log('[DEBUG] Twitter 서비스 초기화 성공');
+      addLog('[디버그] Twitter 서비스 초기화 성공', 'info');
+    } catch (initError) {
+      console.error('[DEBUG] Twitter 서비스 초기화 실패:', initError);
+      addLog(`Twitter 서비스 초기화 실패: ${initError}`, 'error');
+      return;
+    }
 
     // 5. 게시 시작
     setIsPublishingToTwitter(true);
@@ -484,7 +493,10 @@ ex)
         addLog('[디버그] 실제 Twitter API로 게시를 시도합니다.', 'info');
         
         try {
-          console.log('[DEBUG] twitterService.publishWithImage 호출');
+          console.log('[DEBUG] twitterService.publishWithImage 호출 시작');
+          console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
+          console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
+          
           const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
           console.log('[DEBUG] Twitter API 응답:', tweetResponse);
           

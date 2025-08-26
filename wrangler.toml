@@ -2,12 +2,12 @@ name = "marketing"
 main = "cloudflare-worker.js"
 compatibility_date = "2023-12-18"
 
-# Twitter API keys are stored as Cloudflare Secrets (not in this file for security)
-# Use: wrangler secret put TWITTER_CONSUMER_KEY
-# Use: wrangler secret put TWITTER_CONSUMER_SECRET
-# Use: wrangler secret put TWITTER_ACCESS_TOKEN
-# Use: wrangler secret put TWITTER_ACCESS_TOKEN_SECRET
-# Use: wrangler secret put TWITTER_BEARER_TOKEN
+[vars]
+TWITTER_CONSUMER_KEY = "OM9c8GsZeEKClBEjtJlJ25rZ4"
+TWITTER_CONSUMER_SECRET = "TD4mZjpiOXl7pSdlpcLjFYBous6QQR5XdUaO9UA1YJAp3M1hve"
+TWITTER_ACCESS_TOKEN = "1908069288256352256-ZviFYgShfvOynS5Bzbvuu2LeVgpLNQ"
+TWITTER_ACCESS_TOKEN_SECRET = "weDYIiqViNBuCaSh6t7noOoG3y5Sye2mlwmrzIv1ioTXd"
+TWITTER_BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAAOIZ3wEAAAAAP2ugCojLD0E4Ki65QrqIkZWa4ak%3Du2eMfjuzsNSfqNInL5RgYMKUVgGig7FIDJjWl0W9Ts5DCkjVJH"
 
 [env.production]
 name = "marketing"
