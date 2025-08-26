@@ -3,6 +3,7 @@ import { AutomationConfig, UploadedImage } from '../types';
 import { generateText } from '../services/geminiService';
 import { googleDriveService, GoogleDriveImage, GoogleDriveFolder } from '../services/googleDriveService';
 import { getChannelInfo, YouTubeChannelInfo } from '../services/youtubeService';
+import { twitterService } from '../services/twitterService';
 import PromptEditor from './common/PromptEditor';
 import AutomationControls from './common/AutomationControls';
 import LogDisplay from './common/LogDisplay';
@@ -18,7 +19,7 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const { getPrompt, updatePrompt, resetPrompt, interpolatePrompt } = usePrompts('twitter');
   const { logs, addLog, clearLogs } = useLogger();
   const { isAutomating, startAutomation, stopAutomation, isRunning } = useAutomation();
-  const { getApiKey } = useApiKeys(['googleDriveClientId', 'googleDriveClientSecret', 'gemini', 'youtube']);
+  const { getApiKey } = useApiKeys(['googleDriveClientId', 'googleDriveClientSecret', 'gemini', 'youtube', 'twitterConsumerKey', 'twitterConsumerSecret', 'twitterAccessToken', 'twitterAccessTokenSecret', 'twitterBearerToken']);
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [driveImages, setDriveImages] = useState<GoogleDriveImage[]>([]);
   const [driveFolders, setDriveFolders] = useState<GoogleDriveFolder[]>([]);
@@ -408,6 +409,25 @@ ex)
       return;
     }
 
+    // Twitter API 키 확인
+    const twitterConfig = {
+      consumerKey: getApiKey('twitterConsumerKey'),
+      consumerSecret: getApiKey('twitterConsumerSecret'),
+      accessToken: getApiKey('twitterAccessToken'),
+      accessTokenSecret: getApiKey('twitterAccessTokenSecret'),
+      bearerToken: getApiKey('twitterBearerToken')
+    };
+
+    if (!twitterConfig.consumerKey || !twitterConfig.consumerSecret || 
+        !twitterConfig.accessToken || !twitterConfig.accessTokenSecret || 
+        !twitterConfig.bearerToken) {
+      addLog('Twitter API 키가 완전하지 않습니다. Sidebar에서 모든 Twitter API 키를 입력해주세요.', 'error');
+      return;
+    }
+
+    // Twitter 서비스 초기화
+    twitterService.initialize(twitterConfig);
+
     setIsPublishingToTwitter(true);
 
     const languageType = selectedLanguage === 'english' ? '영어' : '한국어';
@@ -420,15 +440,15 @@ ex)
       try {
         addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 트위터에 게시 중...`, 'generating');
         
-        // Twitter API 시뮬레이션
-        await new Promise(res => setTimeout(res, 2000));
-        const twitterPostId = `18${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
+        // Twitter API를 통한 실제 게시
+        const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
         
-        addLog(`트위터 게시 완료! 확인: https://x.com/user/status/${twitterPostId}`, 'success');
+        addLog(`트위터 게시 완료! 확인: https://x.com/user/status/${tweetResponse.data.id}`, 'success');
         addLog(`게시된 내용 미리보기:\n"${post.content.substring(0, 100)}..."`, 'info');
         
       } catch (error) {
         addLog(`'${image.file.name}' 트위터 게시 실패: ${error}`, 'error');
+        console.error('Twitter 게시 오류:', error);
       }
     }
 

@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 // OAuth 1.0a 서명 생성 함수
 async function generateOAuth1Signature(method, url, params, consumerSecret, tokenSecret) {
   const sortedParams = Object.keys(params)
@@ -65,72 +67,32 @@ async function generateOAuth1Header(method, url, additionalParams, config) {
 
 export default {
   async fetch(request, env, ctx) {
-    // CORS 헤더
+    // CORS 헤더 설정
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
-    // OPTIONS 요청 처리 (CORS preflight)
+    // Preflight 요청 처리
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 200, headers: corsHeaders });
+      return new Response(null, { headers: corsHeaders });
     }
 
     const url = new URL(request.url);
-    const path = url.pathname;
+    
+    try {
+      // Twitter API 키 설정
+      const config = {
+        consumerKey: env.TWITTER_CONSUMER_KEY,
+        consumerSecret: env.TWITTER_CONSUMER_SECRET,
+        accessToken: env.TWITTER_ACCESS_TOKEN,
+        accessTokenSecret: env.TWITTER_ACCESS_TOKEN_SECRET,
+        bearerToken: env.TWITTER_BEARER_TOKEN
+      };
 
-    // Reddit API 프록시
-    if (path.startsWith('/api/reddit/')) {
-      try {
-        // /api/reddit/r/newtuber/new.json -> /r/newtuber/new.json
-        const redditPath = path.replace('/api/reddit', '');
-        const redditUrl = `https://www.reddit.com${redditPath}${url.search}`;
-        
-        console.log('Proxying to:', redditUrl);
-
-        const redditResponse = await fetch(redditUrl, {
-          method: request.method,
-          headers: {
-            'User-Agent': 'CloudflareWorker/1.0 (by /u/bot)',
-          },
-        });
-
-        const data = await redditResponse.text();
-        
-        return new Response(data, {
-          status: redditResponse.status,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        });
-      } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: 'Failed to fetch from Reddit',
-          message: error.message 
-        }), {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-    }
-
-    // Twitter API 프록시
-    if (path === '/upload-media') {
-      try {
-        // Twitter API 키 설정 (환경변수에서 가져오기)
-        const config = {
-          consumerKey: env.TWITTER_CONSUMER_KEY,
-          consumerSecret: env.TWITTER_CONSUMER_SECRET,
-          accessToken: env.TWITTER_ACCESS_TOKEN,
-          accessTokenSecret: env.TWITTER_ACCESS_TOKEN_SECRET,
-          bearerToken: env.TWITTER_BEARER_TOKEN
-        };
-
+      if (url.pathname === '/upload-media') {
+        // 미디어 업로드 프록시
         const formData = await request.formData();
         const command = formData.get('command');
         
@@ -228,23 +190,8 @@ export default {
           });
         }
 
-      } catch (error) {
-        console.error('Twitter Upload Error:', error);
-        return new Response(JSON.stringify({ 
-          error: error.message 
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
-    }
-
-    if (path === '/create-tweet') {
-      try {
-        const config = {
-          bearerToken: env.TWITTER_BEARER_TOKEN
-        };
-        
+      } else if (url.pathname === '/create-tweet') {
+        // 트윗 작성 프록시
         const tweetData = await request.json();
         
         const tweetResponse = await fetch('https://api.x.com/2/tweets', {
@@ -261,31 +208,21 @@ export default {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
 
-      } catch (error) {
-        console.error('Twitter Tweet Error:', error);
-        return new Response(JSON.stringify({ 
-          error: error.message 
-        }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      } else {
+        return new Response('Not Found', { 
+          status: 404, 
+          headers: corsHeaders 
         });
       }
-    }
 
-    // 기본 응답
-    return new Response(JSON.stringify({ 
-      message: 'Multi-API Proxy',
-      apis: {
-        reddit: 'Use /api/reddit/r/[subreddit]/[sort].json',
-        twitter_upload: 'POST /upload-media with FormData',
-        twitter_tweet: 'POST /create-tweet with JSON'
-      },
-      example: '/api/reddit/r/newtuber/new.json?limit=10'
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
-    });
+    } catch (error) {
+      console.error('Twitter Proxy Error:', error);
+      return new Response(JSON.stringify({ 
+        error: error.message 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
   },
 };

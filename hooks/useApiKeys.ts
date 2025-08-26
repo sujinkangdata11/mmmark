@@ -40,7 +40,14 @@ const defaultApiKeys: ApiKeyConfig = {
   youtube: '',
   discordWebhook: 'https://discord.com/api/webhooks/1409752044667146271/FfJ4UxazUp7LE5uACHisx-BpSmt71RQKTYwDCdah62dXq8vm-pPAycuQYwSsadX_B81h',
   googleDriveClientId: '',
-  googleDriveClientSecret: ''
+  googleDriveClientSecret: '',
+  // Twitter API OAuth 1.0a (이미지 업로드용)
+  twitterConsumerKey: '',
+  twitterConsumerSecret: '',
+  twitterAccessToken: '',
+  twitterAccessTokenSecret: '',
+  // Twitter API OAuth 2.0 (트윗 작성용)
+  twitterBearerToken: ''
 };
 
 // 초기화

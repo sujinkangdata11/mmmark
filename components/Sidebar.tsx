@@ -97,14 +97,55 @@ const Sidebar: React.FC = () => {
           </div>
           
           <div>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">소셜 미디어</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Twitter API OAuth 1.0a (이미지 업로드용)</h3>
             <div className="space-y-3">
               <ApiKeyInput 
-                label="Twitter API"
-                value={getApiKey('twitter')}
-                onChange={(value) => setApiKey('twitter', value)}
-                id="twitter-api-key"
+                label="Consumer Key (API Key)"
+                value={getApiKey('twitterConsumerKey')}
+                onChange={(value) => setApiKey('twitterConsumerKey', value)}
+                id="twitter-consumer-key"
+                placeholder="Twitter 개발자 포털의 Consumer Key"
               />
+              <ApiKeyInput 
+                label="Consumer Secret"
+                value={getApiKey('twitterConsumerSecret')}
+                onChange={(value) => setApiKey('twitterConsumerSecret', value)}
+                id="twitter-consumer-secret"
+                placeholder="Twitter 개발자 포털의 Consumer Secret"
+              />
+              <ApiKeyInput 
+                label="Access Token"
+                value={getApiKey('twitterAccessToken')}
+                onChange={(value) => setApiKey('twitterAccessToken', value)}
+                id="twitter-access-token"
+                placeholder="Twitter 개발자 포털의 Access Token"
+              />
+              <ApiKeyInput 
+                label="Access Token Secret"
+                value={getApiKey('twitterAccessTokenSecret')}
+                onChange={(value) => setApiKey('twitterAccessTokenSecret', value)}
+                id="twitter-access-token-secret"
+                placeholder="Twitter 개발자 포털의 Access Token Secret"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Twitter API OAuth 2.0 (트윗 작성용)</h3>
+            <div className="space-y-3">
+              <ApiKeyInput 
+                label="Bearer Token"
+                value={getApiKey('twitterBearerToken')}
+                onChange={(value) => setApiKey('twitterBearerToken', value)}
+                id="twitter-bearer-token"
+                placeholder="Twitter 개발자 포털의 Bearer Token"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">기타 소셜 미디어</h3>
+            <div className="space-y-3">
               <ApiKeyInput 
                 label="Threads API"
                 value={getApiKey('threads')}
