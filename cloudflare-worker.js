@@ -131,6 +131,32 @@ export default {
           bearerToken: env.TWITTER_BEARER_TOKEN
         };
 
+        // 디버깅: 환경변수 로딩 상태 확인
+        console.log('[WORKER DEBUG] 환경변수 상태:', {
+          consumerKey: config.consumerKey ? '설정됨' : '미설정',
+          consumerSecret: config.consumerSecret ? '설정됨' : '미설정',
+          accessToken: config.accessToken ? '설정됨' : '미설정',
+          accessTokenSecret: config.accessTokenSecret ? '설정됨' : '미설정',
+          bearerToken: config.bearerToken ? '설정됨' : '미설정'
+        });
+
+        // 환경변수가 없으면 즉시 오류 반환
+        if (!config.consumerKey || !config.consumerSecret || 
+            !config.accessToken || !config.accessTokenSecret) {
+          return new Response(JSON.stringify({ 
+            error: 'Twitter API 환경변수가 설정되지 않았습니다.',
+            missing: {
+              consumerKey: !config.consumerKey,
+              consumerSecret: !config.consumerSecret,
+              accessToken: !config.accessToken,
+              accessTokenSecret: !config.accessTokenSecret
+            }
+          }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         const formData = await request.formData();
         const command = formData.get('command');
         
