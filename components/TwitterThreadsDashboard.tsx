@@ -396,12 +396,23 @@ ex)
   };
 
   const handleTwitterPublish = async () => {
+    console.log('[DEBUG] handleTwitterPublish 시작');
+    addLog('[디버그] Twitter 게시 함수가 호출되었습니다.', 'info');
+
+    // 1. 이미지 체크
+    console.log('[DEBUG] 이미지 개수:', images.length);
+    addLog(`[디버그] 업로드된 이미지 개수: ${images.length}개`, 'info');
+    
     if (images.length === 0) {
       addLog('먼저 2번 카드에서 이미지를 선택해주세요.', 'error');
       return;
     }
 
+    // 2. 게시글 체크
     const postsToPublish = selectedLanguage === 'english' ? translatedPosts : generatedPosts;
+    console.log('[DEBUG] 선택된 언어:', selectedLanguage);
+    console.log('[DEBUG] 게시글 개수:', postsToPublish.length);
+    addLog(`[디버그] 선택된 언어: ${selectedLanguage}, 게시글 개수: ${postsToPublish.length}개`, 'info');
     
     if (postsToPublish.length === 0) {
       const requiredCard = selectedLanguage === 'english' ? '6번(영어 번역)' : '5번(게시글 생성)';
@@ -409,7 +420,7 @@ ex)
       return;
     }
 
-    // Twitter API 키 확인
+    // 3. Twitter API 키 확인
     const twitterConfig = {
       consumerKey: getApiKey('twitterConsumerKey'),
       consumerSecret: getApiKey('twitterConsumerSecret'),
@@ -418,6 +429,16 @@ ex)
       bearerToken: getApiKey('twitterBearerToken')
     };
 
+    console.log('[DEBUG] Twitter API 키 상태:', {
+      consumerKey: twitterConfig.consumerKey ? '설정됨' : '미설정',
+      consumerSecret: twitterConfig.consumerSecret ? '설정됨' : '미설정',
+      accessToken: twitterConfig.accessToken ? '설정됨' : '미설정',
+      accessTokenSecret: twitterConfig.accessTokenSecret ? '설정됨' : '미설정',
+      bearerToken: twitterConfig.bearerToken ? '설정됨' : '미설정'
+    });
+
+    addLog(`[디버그] Twitter API 키 확인 완료`, 'info');
+
     if (!twitterConfig.consumerKey || !twitterConfig.consumerSecret || 
         !twitterConfig.accessToken || !twitterConfig.accessTokenSecret || 
         !twitterConfig.bearerToken) {
@@ -425,35 +446,77 @@ ex)
       return;
     }
 
-    // Twitter 서비스 초기화
+    // 4. Twitter 서비스 초기화
+    console.log('[DEBUG] Twitter 서비스 초기화');
+    addLog('[디버그] Twitter 서비스 초기화 중...', 'info');
     twitterService.initialize(twitterConfig);
 
+    // 5. 게시 시작
     setIsPublishingToTwitter(true);
+    console.log('[DEBUG] 게시 상태를 true로 설정');
 
     const languageType = selectedLanguage === 'english' ? '영어' : '한국어';
     addLog(`${languageType} 콘텐츠를 트위터에 발행합니다...`, 'info');
 
-    for (let i = 0; i < Math.min(images.length, postsToPublish.length); i++) {
+    const totalPairs = Math.min(images.length, postsToPublish.length);
+    console.log('[DEBUG] 처리할 이미지-게시글 쌍:', totalPairs);
+    addLog(`[디버그] 총 ${totalPairs}개의 이미지-게시글 쌍을 처리합니다.`, 'info');
+
+    // 6. 개별 게시 처리
+    for (let i = 0; i < totalPairs; i++) {
       const image = images[i];
       const post = postsToPublish[i];
+      
+      console.log(`[DEBUG] ${i + 1}번째 아이템 처리 시작:`, {
+        imageName: image.file.name,
+        imageSize: image.file.size,
+        channelName: post.channelName,
+        contentLength: post.content.length
+      });
+
+      addLog(`[디버그] ${i + 1}/${totalPairs} - '${image.file.name}' 처리 시작`, 'info');
 
       try {
         addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 트위터에 게시 중...`, 'generating');
         
-        // Twitter API를 통한 실제 게시
-        const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
+        // 실제 Twitter API 모드
+        console.log('[DEBUG] 실제 Twitter API 호출 시작');
+        addLog('[디버그] 실제 Twitter API로 게시를 시도합니다.', 'info');
         
-        addLog(`트위터 게시 완료! 확인: https://x.com/user/status/${tweetResponse.data.id}`, 'success');
-        addLog(`게시된 내용 미리보기:\n"${post.content.substring(0, 100)}..."`, 'info');
+        try {
+          console.log('[DEBUG] twitterService.publishWithImage 호출');
+          const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
+          console.log('[DEBUG] Twitter API 응답:', tweetResponse);
+          
+          addLog(`✅ 트위터 게시 완료! 확인: https://x.com/user/status/${tweetResponse.data.id}`, 'success');
+          addLog(`게시된 내용 미리보기:\n"${post.content.substring(0, 100)}..."`, 'info');
+          
+        } catch (apiError: any) {
+          console.error('[DEBUG] Twitter API 오류:', apiError);
+          
+          if (apiError.message.includes('401') || apiError.message.includes('Unauthorized')) {
+            addLog('⚠️ Twitter API 인증 실패: Cloudflare Workers 환경변수를 확인해주세요.', 'error');
+            addLog('TWITTER_SETUP.md 파일을 참고하여 환경변수를 설정해주세요.', 'info');
+          } else {
+            addLog(`Twitter API 오류: ${apiError.message}`, 'error');
+          }
+          
+          throw apiError;
+        }
+        
+        console.log(`[DEBUG] ${i + 1}번째 아이템 처리 완료`);
         
       } catch (error) {
+        console.error(`[DEBUG] ${i + 1}번째 아이템 처리 오류:`, error);
         addLog(`'${image.file.name}' 트위터 게시 실패: ${error}`, 'error');
-        console.error('Twitter 게시 오류:', error);
       }
     }
 
+    // 7. 완료 처리
+    console.log('[DEBUG] 모든 게시 완료, 상태 초기화');
     setIsPublishingToTwitter(false);
     addLog(`모든 ${languageType} 콘텐츠의 트위터 발행이 완료되었습니다.`, 'info');
+    console.log('[DEBUG] handleTwitterPublish 완료');
   };
 
   const runAutomation = async () => {
