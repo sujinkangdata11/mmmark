@@ -14,6 +14,8 @@ export default defineConfig(({ mode }) => {
         }
       },
       server: {
+        port: 5175,
+        strictPort: true,
         proxy: {
           '/api/reddit': {
             target: 'https://www.reddit.com',

@@ -7,11 +7,16 @@ export const useAutomation = () => {
 
   const startAutomation = useCallback((automationFunction: () => Promise<void>) => {
     setIsAutomating(true);
-    automationFunction().finally(() => setIsAutomating(false));
+    automationRef.current = true;
+    automationFunction().finally(() => {
+      setIsAutomating(false);
+      automationRef.current = false;
+    });
   }, []);
 
   const stopAutomation = useCallback(() => {
     setIsAutomating(false);
+    automationRef.current = false;
   }, []);
 
   const isRunning = () => automationRef.current;

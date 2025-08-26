@@ -1,19 +1,12 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Ensure the API key is available in the environment variables.
-// In a real application, you would need to set this up in your deployment environment.
-// For this example, we'll proceed assuming it's set.
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  console.warn("Gemini API key not found. Using mock service. Please set the API_KEY environment variable.");
-}
-
-const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
-
-export const generateText = async (prompt: string): Promise<string> => {
-  if (!ai) {
+// Create a function that accepts an API key parameter
+export const generateText = async (prompt: string, apiKey?: string): Promise<string> => {
+  // First try to use the provided API key, then fall back to environment variable
+  const API_KEY = apiKey || process.env.API_KEY;
+  
+  if (!API_KEY) {
     // Mock implementation for development without an API key
     return new Promise(resolve => {
       setTimeout(() => {
@@ -23,6 +16,7 @@ export const generateText = async (prompt: string): Promise<string> => {
   }
 
   try {
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,

@@ -1,10 +1,10 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { AutomationConfig, UploadedImage } from '../types';
 import { generateText } from '../services/geminiService';
-import BaseAutomationPanel from './common/BaseAutomationPanel';
-import ApiKeyInput from './common/ApiKeyInput';
 import PromptEditor from './common/PromptEditor';
-import { useApiKeys, usePrompts } from '../hooks';
+import AutomationControls from './common/AutomationControls';
+import LogDisplay from './common/LogDisplay';
+import { usePrompts, useLogger, useAutomation } from '../hooks';
 
 interface TwitterThreadsDashboardProps {
   config: AutomationConfig;
@@ -12,9 +12,10 @@ interface TwitterThreadsDashboardProps {
   hideBackButton?: boolean;
 }
 
-const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ config, onBack, hideBackButton }) => {
-  const { getApiKey, setApiKey, validateKeys } = useApiKeys(['twitter', 'threads']);
+const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ config }) => {
   const { getPrompt, updatePrompt, resetPrompt, interpolatePrompt } = usePrompts('twitter');
+  const { logs, addLog, clearLogs } = useLogger();
+  const { isAutomating, startAutomation, stopAutomation, isRunning } = useAutomation();
   const [images, setImages] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,13 +41,14 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
     setImages(prev => prev.filter(img => img.id !== id));
   };
 
-  const runAutomation = async (addLog: Function, isRunning: () => boolean) => {
+  const runAutomation = async () => {
     addLog('자동화를 시작합니다...', 'info');
 
-    if (!validateKeys(['twitter', 'threads'])) {
-      addLog('Twitter와 Threads API 키를 모두 입력해야 합니다.', 'error');
-      return;
-    }
+    // API 키 검증은 사이드바에서 관리되므로 여기서는 제거
+    // if (!validateKeys(['twitter', 'threads'])) {
+    //   addLog('Twitter와 Threads API 키를 모두 입력해야 합니다.', 'error');
+    //   return;
+    // }
 
     if (images.length === 0) {
       addLog('자동 포스팅할 이미지가 없습니다. 이미지를 추가해주세요.', 'error');
@@ -90,88 +92,121 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
     }
   };
 
-  return (
-    <BaseAutomationPanel 
-      config={config} 
-      onBack={onBack} 
-      hideBackButton={hideBackButton}
-      onStartAutomation={runAutomation}
-    >
-      {/* API 설정 */}
-      <div className="bg-white rounded-xl p-6 border border-gray-300">
-        <h2 className="text-xl font-bold text-cyan-600 mb-4">1. API 설정</h2>
-        <div className="space-y-4">
-          <ApiKeyInput 
-            label="Twitter API 키"
-            value={getApiKey('twitter')}
-            onChange={(value) => setApiKey('twitter', value)}
-            id="twitter-api-key"
-          />
-          <ApiKeyInput 
-            label="Threads API 키"
-            value={getApiKey('threads')}
-            onChange={(value) => setApiKey('threads', value)}
-            id="threads-api-key"
-          />
-        </div>
-      </div>
-
-      {/* 이미지 관리 */}
-      <div className="bg-white rounded-xl p-6 border border-gray-300">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-cyan-600">2. 이미지 관리</h2>
-          <span className="text-sm text-gray-600">{images.length}개 이미지</span>
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4 max-h-48 overflow-y-auto pr-2">
-          {images.map(image => (
-            <div key={image.id} className="relative group aspect-square">
-              <img src={image.dataUrl} alt={image.file.name} className="w-full h-full object-cover rounded-md" />
-              <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => handleDeleteImage(image.id)} className="text-white text-3xl font-bold">&times;</button>
+  const steps = [
+    {
+      id: 'image-setup',
+      title: '이미지 관리',
+      content: (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-sm text-gray-600">{images.length}개 이미지</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-4 max-h-48 overflow-y-auto pr-2">
+            {images.map(image => (
+              <div key={image.id} className="relative group aspect-square">
+                <img src={image.dataUrl} alt={image.file.name} className="w-full h-full object-cover rounded-md" />
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleDeleteImage(image.id)} className="text-white text-2xl font-bold">&times;</button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <input 
+            type="file" 
+            multiple 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleImageUpload} 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            className="w-full px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors border border-gray-300"
+          >
+            이미지 업로드
+          </button>
+          <div className="text-sm text-gray-600 mt-3">
+            업로드한 이미지가 Twitter와 Threads에 자동으로 게시됩니다.
+          </div>
         </div>
-        <input 
-          type="file" 
-          multiple 
-          accept="image/*" 
-          ref={fileInputRef} 
-          onChange={handleImageUpload} 
-          className="hidden" 
-        />
-        <button 
-          onClick={() => fileInputRef.current?.click()} 
-          className="w-full px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-md hover:bg-gray-200 transition-colors border border-gray-300"
-        >
-          이미지 업로드
-        </button>
-      </div>
-
-      {/* 프롬프트 설정 */}
-      <div className="bg-white rounded-xl p-6 border border-gray-300">
-        <h2 className="text-xl font-bold text-cyan-600 mb-4">3. AI 프롬프트 설정</h2>
+      )
+    },
+    {
+      id: 'prompt-setup',
+      title: 'AI 프롬프트 설정',
+      content: (
         <div className="space-y-4">
           {getPrompt('twitter-post') && (
-            <PromptEditor
-              prompt={getPrompt('twitter-post')!}
-              value={getPrompt('twitter-post')!.template}
-              onChange={(value) => updatePrompt('twitter-post', value)}
-              onReset={() => resetPrompt('twitter-post')}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Twitter 포스트 프롬프트</label>
+              <PromptEditor
+                prompt={getPrompt('twitter-post')!}
+                value={getPrompt('twitter-post')!.template}
+                onChange={(value) => updatePrompt('twitter-post', value)}
+                onReset={() => resetPrompt('twitter-post')}
+              />
+            </div>
           )}
           
           {getPrompt('twitter-threads') && (
-            <PromptEditor
-              prompt={getPrompt('twitter-threads')!}
-              value={getPrompt('twitter-threads')!.template}
-              onChange={(value) => updatePrompt('twitter-threads', value)}
-              onReset={() => resetPrompt('twitter-threads')}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Threads 포스트 프롬프트</label>
+              <PromptEditor
+                prompt={getPrompt('twitter-threads')!}
+                value={getPrompt('twitter-threads')!.template}
+                onChange={(value) => updatePrompt('twitter-threads', value)}
+                onReset={() => resetPrompt('twitter-threads')}
+              />
+            </div>
           )}
         </div>
+      )
+    },
+    {
+      id: 'automation-control',
+      title: '자동화 실행',
+      content: (
+        <div className="space-y-4">
+          <AutomationControls 
+            isAutomating={isAutomating}
+            onStart={() => {
+              clearLogs();
+              startAutomation(() => runAutomation());
+            }}
+            onStop={() => {
+              stopAutomation();
+              addLog('자동화를 중지하는 중...', 'error');
+            }}
+          />
+          <div className="max-h-64 overflow-y-auto">
+            <LogDisplay logs={logs} />
+          </div>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="w-full bg-white">
+      <div className="overflow-x-auto pb-6 bg-white">
+        <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
+          {steps.map((step, index) => (
+            <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                  {index + 1}
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{step.title}</h3>
+              </div>
+              {step.content}
+            </div>
+          ))}
+        </div>
       </div>
-    </BaseAutomationPanel>
+      <div className="text-center text-gray-500 text-sm mt-4">
+        ← → 좌우로 스크롤하여 각 단계를 진행하세요
+      </div>
+    </div>
   );
 };
 
