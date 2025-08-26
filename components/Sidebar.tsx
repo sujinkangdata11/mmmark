@@ -3,7 +3,7 @@ import ApiKeyInput from './common/ApiKeyInput';
 import { useApiKeys } from '../hooks';
 
 const Sidebar: React.FC = () => {
-  const { getApiKey, setApiKey } = useApiKeys(['gemini', 'username', 'clientId', 'clientSecret', 'redditAccount', 'redditPassword', 'twitter', 'threads', 'youtube', 'discordWebhook']);
+  const { getApiKey, setApiKey } = useApiKeys(['gemini', 'username', 'clientId', 'clientSecret', 'redditAccount', 'redditPassword', 'twitter', 'threads', 'youtube', 'discordWebhook', 'googleDriveClientId', 'googleDriveClientSecret']);
 
   return (
     <div className="w-80 bg-white border border-gray-200 rounded-xl p-6 m-6">
@@ -74,6 +74,26 @@ const Sidebar: React.FC = () => {
               onChange={(value) => setApiKey('youtube', value)}
               id="youtube-api-key"
             />
+          </div>
+          
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Google Drive</h3>
+            <div className="space-y-3">
+              <ApiKeyInput 
+                label="Client ID"
+                value={getApiKey('googleDriveClientId')}
+                onChange={(value) => setApiKey('googleDriveClientId', value)}
+                id="google-drive-client-id"
+                placeholder="구글 콘솔에서 생성한 Client ID"
+              />
+              <ApiKeyInput 
+                label="Client Secret"
+                value={getApiKey('googleDriveClientSecret')}
+                onChange={(value) => setApiKey('googleDriveClientSecret', value)}
+                id="google-drive-client-secret"
+                placeholder="구글 콘솔에서 생성한 Client Secret"
+              />
+            </div>
           </div>
           
           <div>

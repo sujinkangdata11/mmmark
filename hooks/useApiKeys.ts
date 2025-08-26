@@ -38,14 +38,18 @@ const defaultApiKeys: ApiKeyConfig = {
   twitter: '',
   threads: '',
   youtube: '',
-  discordWebhook: 'https://discord.com/api/webhooks/1409752044667146271/FfJ4UxazUp7LE5uACHisx-BpSmt71RQKTYwDCdah62dXq8vm-pPAycuQYwSsadX_B81h'
+  discordWebhook: 'https://discord.com/api/webhooks/1409752044667146271/FfJ4UxazUp7LE5uACHisx-BpSmt71RQKTYwDCdah62dXq8vm-pPAycuQYwSsadX_B81h',
+  googleDriveClientId: '',
+  googleDriveClientSecret: ''
 };
 
 // 초기화
 if (typeof window !== 'undefined') {
   const storedKeys = loadApiKeysFromStorage();
+  console.log('[DEBUG] Loaded stored keys:', Object.keys(storedKeys));
   // 저장된 키가 있으면 사용하고, 없으면 기본값 사용
   globalApiKeys = { ...defaultApiKeys, ...storedKeys };
+  console.log('[DEBUG] Initialized global keys:', Object.keys(globalApiKeys));
 }
 
 export const useApiKeys = (initialKeys: string[] = []) => {
@@ -62,9 +66,11 @@ export const useApiKeys = (initialKeys: string[] = []) => {
   });
 
   const setApiKey = (keyName: string, value: string) => {
+    console.log(`[DEBUG] Setting API key: ${keyName} = ${value ? '[HIDDEN]' : '[EMPTY]'}`);
     const newKeys = { ...globalApiKeys, [keyName]: value };
     globalApiKeys = newKeys;
     saveApiKeysToStorage(newKeys);
+    console.log(`[DEBUG] Updated global keys:`, Object.keys(newKeys));
     
     // 모든 리스너에게 변경사항 알림
     listeners.forEach(listener => listener(newKeys));

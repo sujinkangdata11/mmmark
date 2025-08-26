@@ -61,13 +61,30 @@ Post Content: "{POST_CONTENT}"
   twitter: [
     {
       id: 'twitter-post',
-      name: '트윗 생성 프롬프트',
-      description: '이미지와 함께 올릴 트윗 생성',
-      template: `Create an engaging Twitter post for an image. The post should be catchy, include relevant hashtags, and encourage engagement. Keep it under 280 characters.
+      name: '수익 분석 프롬프트',
+      description: 'YouTube 채널 정보를 바탕으로 수익 분석 포스트 생성',
+      template: `주어진 정보를 가지고 아래 [빈칸]을 채워서 예시처럼 만드세요.
+-----------------------------
+🚨 이 채널은 개설 [기간] 만에 '광고 + 쇼핑제휴' 합산 총 수익 약 [$총합]를 만들었을 가능성이 큽니다!
 
-Image context: "{IMAGE_NAME}"
-Topic focus: "{TOPIC}"`,
-      variables: ['IMAGE_NAME', 'TOPIC']
+업로드 [업로드수]개 📌
+💵 광고 수익(쇼츠 RPM $0.3 가정): 약 $[광고수익]
+🛒 쇼핑제휴 수익(1만 뷰당 20건 · 평균가 $30 · 커미션 6%): 약 $[제휴수익]
+= 합산 총 수익: 약 $[총합]
+--------------------------------
+[] 빈칸을 정확하게 수학적 계산을 통해 아래같은 예시를 만드세요. 
+---------------------------------
+
+ex)
+🚨 이 채널은 개설 15일 만에 '광고 + 쇼핑제휴' 합산 총 수익 약 $13,038를 만들었을 가능성이 큽니다!
+
+업로드 31개 📌
+💵 광고 수익(쇼츠 RPM $0.33 가정): 약 $1,095
+🛒 쇼핑제휴 수익(1만 뷰당 20건 · 평균가 $30 · 커미션 6%): 약 $11,944
+= 합산 총 수익: 약 $13,038
+
+리트윗하고 "LIKE"라고 댓글 다세요. 정말 쉬운 방법을 알려드립니다! (팔로우 필수) 🚨`,
+      variables: ['CHANNEL_NAME', 'CREATED_DATE', 'SUBSCRIBER_COUNT', 'VIEW_COUNT', 'VIDEO_COUNT']
     },
     {
       id: 'twitter-threads',
