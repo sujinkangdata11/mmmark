@@ -8,6 +8,7 @@ export interface YouTubeVideo {
   thumbnail: string;
   url: string;
   description: string;
+  duration?: number; // 영상 길이 (초 단위)
 }
 
 export interface YouTubeSearchParams {
@@ -71,6 +72,20 @@ class YouTubeApiService {
     this.apiKey = apiKey;
   }
 
+  // ISO 8601 duration을 초 단위로 변환
+  private parseDuration(isoDuration: string): number {
+    // PT4M13S -> 4분 13초 = 253초
+    // PT1H2M3S -> 1시간 2분 3초 = 3723초
+    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) return 0;
+    
+    const hours = parseInt(match[1] || '0');
+    const minutes = parseInt(match[2] || '0');
+    const seconds = parseInt(match[3] || '0');
+    
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
   async searchVideos(params: YouTubeSearchParams): Promise<YouTubeSearchResult> {
     if (!this.apiKey) {
       throw new Error('YouTube API 키가 설정되지 않았습니다.');
@@ -109,9 +124,9 @@ class YouTubeApiService {
         };
       }
 
-      // 비디오 상세 정보 (조회수 포함) 가져오기
+      // 비디오 상세 정보 (조회수, 길이 포함) 가져오기
       const videosUrl = `https://www.googleapis.com/youtube/v3/videos?` + new URLSearchParams({
-        part: 'snippet,statistics',
+        part: 'snippet,statistics,contentDetails',
         id: videoIds.join(','),
         key: this.apiKey
       });
@@ -135,7 +150,8 @@ class YouTubeApiService {
         publishedAt: item.snippet.publishedAt,
         thumbnail: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
         url: `https://www.youtube.com/watch?v=${item.id}`,
-        description: item.snippet.description || ''
+        description: item.snippet.description || '',
+        duration: this.parseDuration(item.contentDetails?.duration || 'PT0S')
       }));
 
       // 정렬은 클라이언트에서 처리
@@ -169,7 +185,8 @@ class YouTubeApiService {
         publishedAt: '2024-08-26T10:00:00Z',
         thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ1',
-        description: `${params.keyword}에 대한 초보자 친화적인 설명입니다.`
+        description: `${params.keyword}에 대한 초보자 친화적인 설명입니다.`,
+        duration: 45 // 45초 (쇼츠)
       },
       {
         id: 'dQw4w9WgXcQ2',
@@ -180,7 +197,8 @@ class YouTubeApiService {
         publishedAt: '2024-08-25T15:30:00Z',
         thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ2',
-        description: `실제로 ${params.keyword}를 3개월간 사용해본 솔직한 후기입니다.`
+        description: `실제로 ${params.keyword}를 3개월간 사용해본 솔직한 후기입니다.`,
+        duration: 380 // 6분 20초 (롱폼)
       },
       {
         id: 'dQw4w9WgXcQ3',
@@ -191,7 +209,8 @@ class YouTubeApiService {
         publishedAt: '2024-08-24T09:15:00Z',
         thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ3',
-        description: `${params.keyword}의 고급 활용법을 알려드립니다.`
+        description: `${params.keyword}의 고급 활용법을 알려드립니다.`,
+        duration: 58 // 58초 (쇼츠)
       },
       {
         id: 'dQw4w9WgXcQ4',
@@ -202,7 +221,8 @@ class YouTubeApiService {
         publishedAt: '2024-08-23T14:20:00Z',
         thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ4',
-        description: `다양한 ${params.keyword} 옵션들을 비교 분석했습니다.`
+        description: `다양한 ${params.keyword} 옵션들을 비교 분석했습니다.`,
+        duration: 720 // 12분 (롱폼)
       },
       {
         id: 'dQw4w9WgXcQ5',
@@ -213,7 +233,44 @@ class YouTubeApiService {
         publishedAt: '2024-08-22T11:45:00Z',
         thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ5',
-        description: `${params.keyword}와 관련된 유용한 꿀팁들을 모았습니다.`
+        description: `${params.keyword}와 관련된 유용한 꿀팁들을 모았습니다.`,
+        duration: 30 // 30초 (쇼츠)
+      },
+      {
+        id: 'dQw4w9WgXcQ6',
+        title: `${params.keyword} 15초 요약`,
+        channelName: 'Quick Shorts',
+        channelId: 'UC101112131',
+        viewCount: 1200,
+        publishedAt: '2024-08-27T08:00:00Z', // 오늘
+        thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ6',
+        description: `${params.keyword}를 15초로 요약했습니다.`,
+        duration: 15 // 15초 (쇼츠)
+      },
+      {
+        id: 'dQw4w9WgXcQ7',
+        title: `${params.keyword} 완벽 가이드 - 30분 집중 강의`,
+        channelName: 'Deep Learning',
+        channelId: 'UC141516171',
+        viewCount: 850,
+        publishedAt: '2024-08-20T16:30:00Z', // 7일 전
+        thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ7',
+        description: `${params.keyword}에 대한 상세한 30분 강의입니다.`,
+        duration: 1800 // 30분 (롱폼)
+      },
+      {
+        id: 'dQw4w9WgXcQ8',
+        title: `${params.keyword} 1분 챌린지`,
+        channelName: 'Challenge Channel',
+        channelId: 'UC181920212',
+        viewCount: 320,
+        publishedAt: '2024-08-25T12:00:00Z', // 2일 전
+        thumbnail: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ8',
+        description: `${params.keyword} 1분 챌린지에 도전했습니다!`,
+        duration: 55 // 55초 (쇼츠)
       }
     ];
 

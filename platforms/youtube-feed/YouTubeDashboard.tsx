@@ -43,6 +43,9 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config, onBack, hid
   const [currentPage, setCurrentPage] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
   const [sortOrder, setSortOrder] = useState<'low' | 'high'>('low'); // 조회수 정렬 순서
+  const [durationFilter, setDurationFilter] = useState<'all' | 'shorts' | 'long'>('all'); // 영상 길이 필터
+  const [dateFilter, setDateFilter] = useState<'all' | '3days' | '7days' | '10days' | '30days'>('all'); // 업로드 날짜 필터
+  const [sortType, setSortType] = useState<'viewCount' | 'duration'>('viewCount'); // 정렬 기준
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null);
   const [channelInfo, setChannelInfo] = useState<YouTubeChannelInfo | null>(null);
   const [videoDetails, setVideoDetails] = useState<YouTubeVideoDetails | null>(null);
@@ -53,6 +56,7 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config, onBack, hid
   const [isWritingComment, setIsWritingComment] = useState(false);
   const [generatedComment, setGeneratedComment] = useState<string>('');
   const [isPostingComment, setIsPostingComment] = useState(false);
+  const [commentPosted, setCommentPosted] = useState(false); // 댓글 게시 성공 상태
 
   const VIDEOS_PER_PAGE = 10;
 
@@ -108,11 +112,49 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
     }
   };
 
-  // 페이지네이션 관련 계산 (정렬 적용)
-  const sortedVideos = searchResults ? 
-    [...searchResults.videos].sort((a, b) => 
-      sortOrder === 'low' ? a.viewCount - b.viewCount : b.viewCount - a.viewCount
-    ) : [];
+  // 영상 필터링 및 정렬
+  const filterAndSortVideos = (videos: YouTubeVideo[]) => {
+    let filtered = videos;
+    
+    // 1. 영상 길이 필터링
+    if (durationFilter === 'shorts') {
+      // 1분(60초) 이하 쇼츠
+      filtered = filtered.filter(video => video.duration && video.duration <= 60);
+    } else if (durationFilter === 'long') {
+      // 5분(300초) 이상 롱폼
+      filtered = filtered.filter(video => video.duration && video.duration >= 300);
+    }
+
+    // 2. 업로드 날짜 필터링
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const filterDays = {
+        '3days': 3,
+        '7days': 7,
+        '10days': 10,
+        '30days': 30
+      }[dateFilter];
+
+      if (filterDays) {
+        const cutoffDate = new Date(now.getTime() - (filterDays * 24 * 60 * 60 * 1000));
+        filtered = filtered.filter(video => new Date(video.publishedAt) >= cutoffDate);
+      }
+    }
+
+    // 3. 정렬
+    return filtered.sort((a, b) => {
+      if (sortType === 'viewCount') {
+        return sortOrder === 'low' ? a.viewCount - b.viewCount : b.viewCount - a.viewCount;
+      } else if (sortType === 'duration') {
+        const aDuration = a.duration || 0;
+        const bDuration = b.duration || 0;
+        return sortOrder === 'low' ? aDuration - bDuration : bDuration - aDuration;
+      }
+      return 0;
+    });
+  };
+
+  const sortedVideos = searchResults ? filterAndSortVideos(searchResults.videos) : [];
   
   const totalPages = sortedVideos.length > 0 ? Math.ceil(sortedVideos.length / VIDEOS_PER_PAGE) : 0;
   const currentVideos = sortedVideos.slice(
@@ -132,6 +174,7 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
     setVideoDetails(null);
     setComments([]);
     setGeneratedComment(''); // 생성된 댓글 초기화
+    setCommentPosted(false); // 댓글 게시 상태 초기화
     addLog(`"${video.title}" 영상을 선택했습니다.`, 'info');
   };
 
@@ -303,6 +346,9 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
       addLog(`게시된 댓글: "${generatedComment.substring(0, 50)}..."`, 'info');
       addLog(`영상 링크: ${selectedVideo?.url}`, 'info');
       
+      // 댓글 게시 성공 상태 설정
+      setCommentPosted(true);
+      
     } catch (error) {
       console.log('💥 [DEBUG] 댓글 게시 오류:', error);
       addLog(`댓글 게시 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
@@ -410,51 +456,112 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
     }
   };
 
-  const runAutomation = async () => {
-    addLog('자동화를 시작합니다...', 'info');
+  // Discord 알림 보내기
+  const handleSendDiscordNotification = async () => {
+    const webhookUrl = getApiKey('discordWebhook');
     
-    if (!searchResults || searchResults.videos.length === 0) {
-      addLog('먼저 영상을 검색해주세요.', 'error');
+    if (!webhookUrl) {
+      addLog('Discord Webhook URL이 설정되지 않았습니다. 사이드바에서 설정해주세요.', 'error');
       return;
     }
 
-    addLog(`총 ${searchResults.videos.length}개 영상에 댓글 작성을 시작합니다.`, 'info');
-
-    for (const video of searchResults.videos) {
-      if (!isRunning()) break;
-      
-      addLog(`[${video.channelName}] "${video.title}" 영상 분석 중... (조회수: ${video.viewCount.toLocaleString()})`, 'info');
-      
-      addLog('AI를 호출하여 댓글 생성 중...', 'generating');
-      const finalCommentPrompt = interpolatePrompt('youtube-comment', {
-        VIDEO_TITLE: video.title,
-        CHANNEL_NAME: video.channelName,
-        VIEW_COUNT: video.viewCount.toString(),
-        DESCRIPTION: video.description
-      });
-
-      try {
-        const geminiApiKey = getApiKey('gemini');
-        if (!geminiApiKey) {
-          addLog('Gemini API 키가 설정되지 않았습니다.', 'error');
-          break;
-        }
-
-        const comment = await generateText(finalCommentPrompt, undefined, geminiApiKey);
-        addLog(`생성된 댓글: "${comment.substring(0, 100)}..."`, 'success');
-        
-        // 실제 댓글 작성은 시뮬레이션
-        addLog(`댓글 작성 완료: ${video.url}`, 'success');
-        
-      } catch (error) {
-        addLog(`댓글 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 딜레이
+    if (!selectedVideo || !generatedComment) {
+      addLog('영상과 댓글 정보가 필요합니다.', 'error');
+      return;
     }
 
-    addLog('자동화가 완료되었습니다.', 'success');
+    try {
+      addLog('Discord로 알림을 보내는 중...', 'info');
+
+      // 메인 Embed
+      const mainEmbed = {
+        title: "🎯 YouTube 마케팅 자동화 완료!",
+        description: `AutoVid 홍보 댓글이 성공적으로 게시되었습니다.`,
+        color: 0xff0000, // YouTube 빨간색
+        fields: [
+          {
+            name: "📊 게시 정보",
+            value: `YouTube 댓글 **1개** 작성 완료`,
+            inline: true
+          },
+          {
+            name: "⏰ 완료 시간",
+            value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
+            inline: true
+          }
+        ],
+        thumbnail: {
+          url: "https://cdn-icons-png.flaticon.com/512/174/174883.png" // YouTube 아이콘
+        },
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: "AI Marketing Automation Hub",
+          icon_url: "https://cdn-icons-png.flaticon.com/512/2099/2099058.png"
+        }
+      };
+
+      // 댓글 상세 Embed
+      const commentEmbed = {
+        title: `YouTube 댓글 게시 완료`,
+        description: `\`\`\`${generatedComment.substring(0, 300)}${generatedComment.length > 300 ? '...' : ''}\`\`\``,
+        color: 0x5865f2, // Discord 블루
+        fields: [
+          {
+            name: "🎬 영상 제목",
+            value: selectedVideo.title.substring(0, 100) + (selectedVideo.title.length > 100 ? '...' : ''),
+            inline: false
+          },
+          {
+            name: "📺 채널명",
+            value: selectedVideo.channelName,
+            inline: true
+          },
+          {
+            name: "👁️ 조회수",
+            value: selectedVideo.viewCount.toLocaleString(),
+            inline: true
+          },
+          {
+            name: "🔗 YouTube 링크",
+            value: `[영상 보기](${selectedVideo.url})`,
+            inline: false
+          },
+          {
+            name: "📏 댓글 길이",
+            value: `${generatedComment.length}자`,
+            inline: true
+          }
+        ]
+      };
+
+      const payload = {
+        content: null,
+        embeds: [mainEmbed, commentEmbed]
+      };
+
+      console.log('🚀 Discord로 메시지 전송 중...', payload);
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        addLog('✅ Discord로 알림이 성공적으로 전송되었습니다!', 'success');
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Discord API 에러: ${response.status} - ${errorText}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Discord 알림 전송 실패:', error);
+      addLog(`Discord 알림 전송 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
+    }
   };
+
 
   const cards = [
     {
@@ -480,7 +587,7 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 placeholder="예: 다이어트 음식, 운동 방법"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
             <div className="self-end">
@@ -494,49 +601,157 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
             </div>
           </div>
           
+          {/* 영상 길이 필터 */}
           <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">정렬 순서:</label>
+            <label className="text-sm font-medium text-gray-700">영상 길이:</label>
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setSortOrder('low');
-                  setCurrentPage(1); // 페이지를 1로 리셋
+                  setDurationFilter('all');
+                  setCurrentPage(1);
                 }}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  sortOrder === 'low' 
-                    ? 'bg-blue-600 text-white' 
+                  durationFilter === 'all' 
+                    ? 'bg-green-600 text-white' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                조회수 낮은순
+                전체
               </button>
               <button
                 onClick={() => {
-                  setSortOrder('high');
-                  setCurrentPage(1); // 페이지를 1로 리셋
+                  setDurationFilter('shorts');
+                  setCurrentPage(1);
                 }}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  sortOrder === 'high' 
-                    ? 'bg-blue-600 text-white' 
+                  durationFilter === 'shorts' 
+                    ? 'bg-green-600 text-white' 
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                조회수 높은순
+                1분이하 쇼츠
+              </button>
+              <button
+                onClick={() => {
+                  setDurationFilter('long');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  durationFilter === 'long' 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                5분이상 롱폼
+              </button>
+            </div>
+          </div>
+
+          {/* 업로드 날짜 필터 */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">업로드 날짜:</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setDateFilter('all');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  dateFilter === 'all' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                전체
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter('3days');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  dateFilter === '3days' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                3일 이내
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter('7days');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  dateFilter === '7days' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                7일 이내
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter('10days');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  dateFilter === '10days' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                10일 이내
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter('30days');
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  dateFilter === '30days' 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                한달 이내
               </button>
             </div>
           </div>
           
           <div className="text-sm text-gray-600">
-            타겟 키워드로 YouTube 영상을 검색하고 조회수가 적은 영상에 댓글을 달아보세요.
+            타겟 키워드로 YouTube 영상을 검색하고 다양한 필터로 원하는 영상에 댓글을 달아보세요.
           </div>
 
           {/* 검색 결과 */}
           {searchResults && (
             <div className="bg-gray-50 p-4 rounded-md">
               <div className="flex justify-between items-center mb-3">
-                <h4 className="text-sm font-medium text-gray-800">
-                  검색 결과: {searchResults.videos.length}개 ({sortOrder === 'low' ? '조회수 낮은 순' : '조회수 높은 순'})
-                </h4>
+                <div className="flex items-center gap-3">
+                  <h4 className="text-sm font-medium text-gray-800">
+                    검색 결과: {sortedVideos.length}개
+                    {searchResults.videos.length !== sortedVideos.length && (
+                      <span className="text-gray-500"> (전체 {searchResults.videos.length}개 중 필터됨)</span>
+                    )}
+                  </h4>
+                  
+                  {/* 정렬 드롭다운 */}
+                  <select
+                    value={`${sortType}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [newSortType, newSortOrder] = e.target.value.split('-') as ['viewCount' | 'duration', 'low' | 'high'];
+                      setSortType(newSortType);
+                      setSortOrder(newSortOrder);
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                  >
+                    <option value="viewCount-low">조회수 적은순</option>
+                    <option value="viewCount-high">조회수 많은순</option>
+                    <option value="duration-low">영상길이 짧은순</option>
+                    <option value="duration-high">영상길이 긴순</option>
+                  </select>
+                </div>
                 <div className="text-xs text-gray-500">
                   페이지 {currentPage} / {totalPages}
                 </div>
@@ -569,7 +784,26 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
                         </div>
                         <div className="flex gap-4 text-gray-500">
                           <span>조회수 {video.viewCount.toLocaleString()}</span>
-                          <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
+                          {video.duration && (
+                            <span>
+                              길이 {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+                              {video.duration <= 60 ? ' 📱' : video.duration >= 300 ? ' 🎬' : ' 📺'}
+                            </span>
+                          )}
+                          <span>
+                            {(() => {
+                              const publishedDate = new Date(video.publishedAt);
+                              const now = new Date();
+                              const diffDays = Math.floor((now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60 * 24));
+                              
+                              if (diffDays === 0) return '오늘 업로드';
+                              if (diffDays === 1) return '1일 전';
+                              if (diffDays <= 3) return `${diffDays}일 전 🔥`;
+                              if (diffDays <= 7) return `${diffDays}일 전 ⚡`;
+                              if (diffDays <= 30) return `${diffDays}일 전`;
+                              return publishedDate.toLocaleDateString();
+                            })()}
+                          </span>
                         </div>
                       </div>
                       {selectedVideo?.id === video.id && (
@@ -638,7 +872,17 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
           {selectedVideo ? (
             <div className="space-y-3">
               <div className="bg-gray-50 p-3 rounded-md">
-                <div className="text-sm font-medium text-gray-700 mb-2">선택된 영상</div>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm font-medium text-gray-700">선택된 영상</div>
+                  <a 
+                    href={selectedVideo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                  >
+                    🔗 링크
+                  </a>
+                </div>
                 <div className="flex gap-3">
                   <img 
                     src={selectedVideo.thumbnail} 
@@ -804,7 +1048,17 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
           <div className="space-y-4">
             {selectedVideo && (
               <div className="bg-gray-50 p-3 rounded-md">
-                <div className="text-sm font-medium text-gray-700 mb-2">선택된 영상</div>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm font-medium text-gray-700">선택된 영상</div>
+                  <a 
+                    href={selectedVideo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                  >
+                    🔗 링크
+                  </a>
+                </div>
                 <div className="flex gap-2">
                   <img 
                     src={selectedVideo.thumbnail} 
@@ -900,7 +1154,17 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
           {selectedVideo ? (
             <div className="space-y-4">
               <div className="bg-gray-50 p-3 rounded-md">
-                <div className="text-sm font-medium text-gray-700 mb-2">선택된 영상</div>
+                <div className="flex justify-between items-center mb-2">
+                  <div className="text-sm font-medium text-gray-700">선택된 영상</div>
+                  <a 
+                    href={selectedVideo.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                  >
+                    🔗 링크
+                  </a>
+                </div>
                 <div className="flex gap-2">
                   <img 
                     src={selectedVideo.thumbnail} 
@@ -933,22 +1197,120 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
                 </div>
               )}
 
-              <button
-                onClick={handlePostComment}
-                disabled={!generatedComment || isPostingComment}
-                className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
-              >
-                {isPostingComment ? '댓글 게시중...' : '실제로 댓글 달기'}
-              </button>
+              {!commentPosted ? (
+                <>
+                  <button
+                    onClick={handlePostComment}
+                    disabled={!generatedComment || isPostingComment}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                  >
+                    {isPostingComment ? '댓글 게시중...' : '실제로 댓글 달기'}
+                  </button>
 
-              <div className="text-xs text-gray-500 text-center">
-                ⚠️ 실제 YouTube 영상에 댓글이 게시됩니다
-              </div>
+                  <div className="text-xs text-gray-500 text-center">
+                    ⚠️ 실제 YouTube 영상에 댓글이 게시됩니다
+                  </div>
+                </>
+              ) : (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-md">
+                  <div className="flex items-center justify-center mb-3">
+                    <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-green-800 mb-2">🎉 댓글 게시 완료!</div>
+                    <div className="text-sm text-green-700 mb-3">
+                      YouTube 영상에 댓글이 성공적으로 게시되었습니다.
+                    </div>
+                    
+                    <div className="bg-white p-3 rounded border text-sm text-gray-800 mb-3">
+                      <div className="text-xs text-gray-600 mb-1">게시된 댓글:</div>
+                      "{generatedComment.substring(0, 100)}{generatedComment.length > 100 ? '...' : ''}"
+                    </div>
+                    
+                    <a 
+                      href={selectedVideo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      YouTube에서 확인하기
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center text-gray-500 py-8">
               <div className="text-sm">먼저 영상을 선택해주세요.</div>
               <div className="text-xs mt-1">2번 카드에서 영상을 클릭하세요.</div>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'discord-notification',
+      title: '디스코드로 알림주기',
+      content: (
+        <div className="space-y-4">
+          {!commentPosted ? (
+            <div className="text-center text-gray-500 bg-gray-50 p-4 rounded-md">
+              먼저 5번 카드에서 댓글을 게시해주세요.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 p-3 rounded-md">
+                <p className="text-green-800 text-sm font-medium">
+                  ✅ YouTube 댓글이 성공적으로 게시되었습니다
+                </p>
+              </div>
+              
+              <div className="bg-white p-4 rounded-md border border-blue-200">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-blue-900">
+                    댓글 게시 완료
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    YouTube
+                  </span>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-md mb-3">
+                  <h4 className="text-xs font-semibold text-blue-700 mb-2">YouTube 링크:</h4>
+                  <a
+                    href={selectedVideo?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                  >
+                    {selectedVideo?.url}
+                  </a>
+                </div>
+
+                <div className="bg-yellow-50 p-3 rounded-md">
+                  <h4 className="text-xs font-semibold text-yellow-700 mb-2">게시된 댓글:</h4>
+                  <p className="text-sm text-gray-800">
+                    {generatedComment.substring(0, 150)}{generatedComment.length > 150 ? '...' : ''}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="text-center mt-6">
+                <button
+                  onClick={handleSendDiscordNotification}
+                  className="px-8 py-4 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors font-semibold text-lg"
+                >
+                  Discord로 알림 보내기
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -968,7 +1330,7 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
           </button>
         )}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{config.name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{config.title}</h1>
           <p className="text-gray-600 mt-1">{config.description}</p>
         </div>
       </div>
