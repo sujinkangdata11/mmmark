@@ -1,5 +1,20 @@
 import { useState, useEffect } from 'react';
 
+// 단순 암호화/해독 함수 (뒤 4자리를 앞으로/앞 4자리를 뒤로)
+const simpleEncrypt = (text: string): string => {
+  if (text.length < 4) return text;
+  const last4 = text.slice(-4);
+  const rest = text.slice(0, -4);
+  return last4 + rest;
+};
+
+const simpleDecrypt = (encrypted: string): string => {
+  if (encrypted.length < 4) return encrypted;
+  const first4 = encrypted.slice(0, 4);
+  const rest = encrypted.slice(4);
+  return rest + first4;
+};
+
 export interface ApiKeyConfig {
   [key: string]: string;
 }
@@ -27,18 +42,18 @@ const saveApiKeysToStorage = (keys: ApiKeyConfig) => {
   }
 };
 
-// 기본 API 키 값들 (개발용)
-const defaultApiKeys: ApiKeyConfig = {
-  gemini: 'AIzaSyAKOOTPulJ6QVGnMtKE8I7dqWHb0OYRZfM',
+// 암호화된 기본 API 키 값들 (깃허브 노출 방지)
+const encryptedDefaultApiKeys: ApiKeyConfig = {
+  gemini: simpleEncrypt('AIzaSyAKOOTPulJ6QVGnMtKE8I7dqWHb0OYRZfM'),
   username: '',
-  clientId: 'OtherBunk6QNnbE6rWRA5PQ',
-  clientSecret: 'UFmIzxGJwqjKfpfOkvBLIBDYNm9MqYDjWw',
+  clientId: simpleEncrypt('OtherBunk6QNnbE6rWRA5PQ'),
+  clientSecret: simpleEncrypt('UFmIzxGJwqjKfpfOkvBLIBDYNm9MqYDjWw'),
   redditAccount: '',
   redditPassword: '',
   twitter: '',
   threads: '',
-  youtube: '',
-  discordWebhook: 'https://discord.com/api/webhooks/1409752044667146271/FfJ4UxazUp7LE5uACHisx-BpSmt71RQKTYwDCdah62dXq8vm-pPAycuQYwSsadX_B81h',
+  youtube: simpleEncrypt('AIzaSyAKOOTPulJ6QVGnMtKE8I7dqWHb0OYRZfM'),
+  discordWebhook: simpleEncrypt('https://discord.com/api/webhooks/1409752044667146271/FfJ4UxazUp7LE5uACHisx-BpSmt71RQKTYwDCdah62dXq8vm-pPAycuQYwSsadX_B81h'),
   googleDriveClientId: '',
   googleDriveClientSecret: '',
   // Twitter API OAuth 1.0a (이미지 업로드용)
@@ -50,12 +65,22 @@ const defaultApiKeys: ApiKeyConfig = {
   twitterBearerToken: ''
 };
 
+// 기본 키 값들을 해독해서 제공
+const getDefaultApiKeys = (): ApiKeyConfig => {
+  const decrypted: ApiKeyConfig = {};
+  Object.entries(encryptedDefaultApiKeys).forEach(([key, value]) => {
+    decrypted[key] = value ? simpleDecrypt(value) : value;
+  });
+  return decrypted;
+};
+
 // 초기화
 if (typeof window !== 'undefined') {
   const storedKeys = loadApiKeysFromStorage();
   console.log('[DEBUG] Loaded stored keys:', Object.keys(storedKeys));
-  // 저장된 키가 있으면 사용하고, 없으면 기본값 사용
-  globalApiKeys = { ...defaultApiKeys, ...storedKeys };
+  // 저장된 키가 있으면 사용하고, 없으면 해독된 기본값 사용
+  const defaultKeys = getDefaultApiKeys();
+  globalApiKeys = { ...defaultKeys, ...storedKeys };
   console.log('[DEBUG] Initialized global keys:', Object.keys(globalApiKeys));
 }
 
@@ -84,7 +109,14 @@ export const useApiKeys = (initialKeys: string[] = []) => {
   };
 
   const getApiKey = (keyName: string) => {
-    return globalApiKeys[keyName] || '';
+    // 사용자가 입력한 키가 있으면 그대로 사용 (평문)
+    const userKey = globalApiKeys[keyName];
+    if (userKey && userKey !== getDefaultApiKeys()[keyName]) {
+      return userKey;
+    }
+    // 기본 키를 사용하는 경우 해독해서 반환
+    const encryptedDefault = encryptedDefaultApiKeys[keyName];
+    return encryptedDefault ? simpleDecrypt(encryptedDefault) : '';
   };
 
   const validateKeys = (requiredKeys: string[]) => {

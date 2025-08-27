@@ -22,13 +22,13 @@ const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpan
   const percentage = goal > 0 ? (completed / goal) * 100 : 0;
   
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 m-6">
+    <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
       {/* 대시보드 제목 및 진행률 표시 */}
       <div className="py-6 border-b border-gray-200">
         <div className="flex items-center mb-4">
           <div className="flex items-center">
             {icon}
-            <h2 className="text-2xl font-bold ml-4 text-black">{title}</h2>
+            <h2 className="text-lg font-bold ml-4 text-black">{title}</h2>
             <button
               onClick={() => onToggle(id)}
               className="bg-cyan-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-cyan-700 transition-colors w-20 ml-8"
@@ -99,9 +99,9 @@ const App: React.FC = () => {
   }, [dailyStats]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white py-[70px] px-[120px]">
       {/* 헤더 - 전체 화면 너비 */}
-      <div className="text-center py-8 bg-white border-b border-gray-200">
+      <div className="text-center py-8 bg-white border-b border-gray-200 mb-8">
         <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
           AI 마케팅 자동화 허브
         </h1>
@@ -110,14 +110,14 @@ const App: React.FC = () => {
         </p>
       </div>
       
-      <div className="flex">
+      <div className="flex gap-8">
         {/* 왼쪽 API 키 관리 블럭 */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 -mt-10">
           <Sidebar />
         </div>
         
         {/* 오른쪽 대시보드 리스트 */}
-        <div className="flex-1">
+        <div className="flex-1 -mt-[16px] -ml-[20px]">
           {enrichedStats.map(stat => (
             <AutomationCard 
               key={stat.id} 
