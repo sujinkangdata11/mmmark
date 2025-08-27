@@ -1,13 +1,13 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { AutomationConfig, UploadedImage } from '../types';
-import { generateText } from '../services/geminiService';
-import { googleDriveService, GoogleDriveImage, GoogleDriveFolder } from '../services/googleDriveService';
-import { getChannelInfo, YouTubeChannelInfo } from '../services/youtubeService';
-import { twitterService } from '../services/twitterService';
-import PromptEditor from './common/PromptEditor';
-import AutomationControls from './common/AutomationControls';
-import LogDisplay from './common/LogDisplay';
-import { usePrompts, useLogger, useAutomation, useApiKeys } from '../hooks';
+import { AutomationConfig, UploadedImage } from '../../types';
+import { generateText } from '../../shared/services/geminiService';
+import { googleDriveService, GoogleDriveImage, GoogleDriveFolder } from '../../shared/services/googleDriveService';
+import { getChannelInfo, YouTubeChannelInfo } from '../youtube-feed/youtubeService';
+import { twitterService } from './twitterService';
+import PromptEditor from '../../shared/components/common/PromptEditor';
+import AutomationControls from '../../shared/components/common/AutomationControls';
+import LogDisplay from '../../shared/components/common/LogDisplay';
+import { usePrompts, useLogger, useAutomation, useApiKeys } from '../../shared/hooks';
 
 interface TwitterThreadsDashboardProps {
   config: AutomationConfig;
@@ -446,19 +446,9 @@ ex)
       return;
     }
 
-    // 4. Twitter 서비스 초기화
-    console.log('[DEBUG] Twitter 서비스 초기화');
-    addLog('[디버그] Twitter 서비스 초기화 중...', 'info');
-    
-    try {
-      twitterService.initialize(twitterConfig);
-      console.log('[DEBUG] Twitter 서비스 초기화 성공');
-      addLog('[디버그] Twitter 서비스 초기화 성공', 'info');
-    } catch (initError) {
-      console.error('[DEBUG] Twitter 서비스 초기화 실패:', initError);
-      addLog(`Twitter 서비스 초기화 실패: ${initError}`, 'error');
-      return;
-    }
+    // Twitter 서비스는 이제 Python tweepy를 사용하므로 별도 초기화 불필요
+    console.log('[DEBUG] Python tweepy 방식 사용 - 별도 초기화 불필요');
+    addLog('[디버그] Python tweepy 방식으로 게시 준비 중...', 'info');
 
     // 5. 게시 시작
     setIsPublishingToTwitter(true);
@@ -493,15 +483,20 @@ ex)
         addLog('[디버그] 실제 Twitter API로 게시를 시도합니다.', 'info');
         
         try {
-          console.log('[DEBUG] twitterService.publishWithImage 호출 시작');
+          console.log('[DEBUG] Python tweepy로 실제 트윗 게시');
           console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
           console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
           
+          // Python tweepy 방식으로 이미지와 함께 트윗
           const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
-          console.log('[DEBUG] Twitter API 응답:', tweetResponse);
+          console.log('[DEBUG] Python tweepy 응답:', tweetResponse);
           
-          addLog(`✅ 트위터 게시 완료! 확인: https://x.com/user/status/${tweetResponse.data.id}`, 'success');
-          addLog(`게시된 내용 미리보기:\n"${post.content.substring(0, 100)}..."`, 'info');
+          const tweetId = tweetResponse?.data?.id || 'temp_id';
+          
+          addLog(`✅ Python tweepy로 트윗 게시 준비 완료!`, 'success');
+          addLog(`📋 콘솔에 출력된 Python 명령어를 터미널에서 실행하세요`, 'info');
+          addLog(`🖼️ 이미지가 자동으로 다운로드되었습니다`, 'info');
+          addLog(`게시할 내용: "${post.content.substring(0, 100)}..."`, 'info');
           
         } catch (apiError: any) {
           console.error('[DEBUG] Twitter API 오류:', apiError);

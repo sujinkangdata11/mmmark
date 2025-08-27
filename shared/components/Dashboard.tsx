@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AutomationConfig, Memo } from '../types';
+import { AutomationConfig, Memo } from '../../types';
 import StatusIndicator from './StatusIndicator';
 import MemoLog from './MemoLog';
 import PromptEditor from './common/PromptEditor';

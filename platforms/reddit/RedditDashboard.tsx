@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { AutomationConfig, Subreddit } from '../types';
-import { generateText } from '../services/geminiService';
-import RedditService from '../services/redditService';
-import BaseAutomationPanel from './common/BaseAutomationPanel';
-import PromptEditor from './common/PromptEditor';
-import PostCard from './common/PostCard';
-import { useApiKeys, usePrompts, useLogger, useAutomation } from '../hooks';
-import LogDisplay from './common/LogDisplay';
+import { AutomationConfig, Subreddit } from '../../types';
+import { generateText } from '../../shared/services/geminiService';
+import RedditService from './redditService';
+import BaseAutomationPanel from '../../shared/components/common/BaseAutomationPanel';
+import PromptEditor from '../../shared/components/common/PromptEditor';
+import PostCard from '../../shared/components/common/PostCard';
+import { useApiKeys, usePrompts, useLogger, useAutomation } from '../../shared/hooks';
+import LogDisplay from '../../shared/components/common/LogDisplay';
 
 interface RedditDashboardProps {
   config: AutomationConfig;
@@ -202,7 +202,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
         POST_CONTENT: allPostsInfo
       });
 
-      const result = await generateText(finalSuitabilityPrompt, geminiApiKey);
+      const result = await generateText(finalSuitabilityPrompt, undefined, geminiApiKey);
       setSuitabilityResult(result);
       
       // 적합한 게시물들 추출
@@ -281,7 +281,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
         POST_CONTENT: post.selftext || '(링크 게시물)'
       });
 
-      const generatedComment = await generateText(commentPrompt, geminiApiKey);
+      const generatedComment = await generateText(commentPrompt, undefined, geminiApiKey);
       
       setGeneratedComments(prev => [...prev, { 
         postIndex: post.originalIndex, 
@@ -332,7 +332,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
         COMMENT: comment
       });
 
-      const translatedComment = await generateText(translationPrompt, geminiApiKey);
+      const translatedComment = await generateText(translationPrompt, undefined, geminiApiKey);
       const commentItem = generatedComments[commentIndex];
       const relatedPost = suitablePosts.find(p => p.originalIndex === commentItem.postIndex);
       
@@ -537,7 +537,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
             POST_CONTENT: post.selftext || '(링크 게시물)'
           });
 
-          const suitabilityResult = await generateText(finalSuitabilityPrompt, geminiApiKey);
+          const suitabilityResult = await generateText(finalSuitabilityPrompt, undefined, geminiApiKey);
 
           if (!suitabilityResult.toUpperCase().includes('YES')) {
             addLog(`게시글이 적합하지 않아 건너뜁니다. (AI 응답: ${suitabilityResult.trim()})`, 'info');
@@ -553,7 +553,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
             POST_CONTENT: post.selftext || '(링크 게시물)'
           });
           
-          const generatedComment = await generateText(finalCommentPrompt, geminiApiKey);
+          const generatedComment = await generateText(finalCommentPrompt, undefined, geminiApiKey);
           addLog(`AI가 생성한 댓글: "${generatedComment.substring(0, 50)}..."`, 'success');
 
           // 시뮬레이션된 댓글 게시

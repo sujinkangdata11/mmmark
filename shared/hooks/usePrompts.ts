@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { DEFAULT_PROMPTS, PromptConfig, AutomationPrompts } from '../config/prompts';
+import { DEFAULT_PROMPTS, PromptConfig, AutomationPrompts } from '../../config/prompts';
 
 export const usePrompts = (automationType: string) => {
   const [customPrompts, setCustomPrompts] = useState<AutomationPrompts>(DEFAULT_PROMPTS);

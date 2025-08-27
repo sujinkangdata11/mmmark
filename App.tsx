@@ -2,11 +2,11 @@
 import React, { useState, useMemo } from 'react';
 import { AUTOMATION_CONFIGS } from './constants';
 import { AutomationConfig, AutomationType, DailyStat, EnrichedStat } from './types';
-import Dashboard from './components/Dashboard';
-import RedditDashboard from './components/RedditDashboard';
-import TwitterThreadsDashboard from './components/TwitterThreadsDashboard';
-import YouTubeDashboard from './components/YouTubeDashboard';
-import Sidebar from './components/Sidebar';
+import Dashboard from './shared/components/Dashboard';
+import RedditDashboard from './platforms/reddit/RedditDashboard';
+import TwitterThreadsDashboard from './platforms/twitter/TwitterThreadsDashboard';
+import YouTubeDashboard from './platforms/youtube-feed/YouTubeDashboard';
+import Sidebar from './shared/components/Sidebar';
 
 
 

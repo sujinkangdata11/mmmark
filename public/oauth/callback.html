@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube OAuth Callback</title>
+    <meta charset="utf-8">
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            text-align: center; 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .success { color: #16a34a; }
+        .error { color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="status">처리 중...</div>
+    </div>
+
+    <script>
+        function handleCallback() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const code = urlParams.get('code');
+                const error = urlParams.get('error');
+                const errorDescription = urlParams.get('error_description');
+                const statusEl = document.getElementById('status');
+
+                console.log('🔄 [OAuth Callback] 페이지 로드됨');
+                console.log('🔄 [OAuth Callback] URL:', window.location.href);
+                console.log('🔄 [OAuth Callback] 파라미터:', { code: !!code, error, errorDescription });
+
+                if (error) {
+                    let errorMsg = error;
+                    if (error === 'access_denied') {
+                        errorMsg = '사용자가 인증을 거부했습니다';
+                    } else if (errorDescription) {
+                        errorMsg = errorDescription;
+                    }
+                    
+                    statusEl.innerHTML = `<div class="error">❌ 인증 실패<br><small>${errorMsg}</small></div>`;
+                    
+                    // 부모 창에 오류 전송
+                    console.log('❌ [OAuth Callback] 오류 발생:', errorMsg);
+                    if (window.opener && !window.opener.closed) {
+                        try {
+                            console.log('📤 [OAuth Callback] 부모 창에 오류 전송 중...');
+                            window.opener.postMessage({
+                                type: 'OAUTH_ERROR',
+                                error: errorMsg
+                            }, window.location.origin);
+                            console.log('✅ [OAuth Callback] 오류 전송 완료');
+                        } catch (postError) {
+                            console.error('❌ [OAuth Callback] 부모창 오류 전송 실패:', postError);
+                        }
+                    } else {
+                        console.error('❌ [OAuth Callback] 부모창을 찾을 수 없음');
+                    }
+                    
+                    setTimeout(() => {
+                        try { window.close(); } catch (e) { console.warn('Could not close window:', e); }
+                    }, 3000);
+                    return;
+                }
+
+                if (code && code.length > 0) {
+                    statusEl.innerHTML = `<div class="success">✅ 인증 완료<br><small>창이 자동으로 닫힙니다...</small></div>`;
+                    
+                    // 부모 창에 코드 전송
+                    console.log('✅ [OAuth Callback] 인증 코드 받음:', code.substring(0, 20) + '...');
+                    if (window.opener && !window.opener.closed) {
+                        try {
+                            console.log('📤 [OAuth Callback] 부모 창에 코드 전송 중...');
+                            window.opener.postMessage({
+                                type: 'OAUTH_SUCCESS',
+                                code: code
+                            }, window.location.origin);
+                            console.log('🎉 [OAuth Callback] 코드 전송 완료!');
+                        } catch (postError) {
+                            console.error('❌ [OAuth Callback] 부모창 코드 전송 실패:', postError);
+                            statusEl.innerHTML = `<div class="error">❌ 부모 창과 통신할 수 없습니다</div>`;
+                        }
+                    } else {
+                        console.error('❌ [OAuth Callback] 부모창을 찾을 수 없음');
+                        statusEl.innerHTML = `<div class="error">❌ 부모 창을 찾을 수 없습니다</div>`;
+                    }
+                    
+                    setTimeout(() => {
+                        try { window.close(); } catch (e) { console.warn('Could not close window:', e); }
+                    }, 1500);
+                } else {
+                    statusEl.innerHTML = `<div class="error">❌ 인증 코드를 받지 못했습니다<br><small>URL에서 코드 파라미터를 찾을 수 없습니다</small></div>`;
+                    setTimeout(() => {
+                        try { window.close(); } catch (e) { console.warn('Could not close window:', e); }
+                    }, 3000);
+                }
+            } catch (err) {
+                console.error('Callback error:', err);
+                const statusEl = document.getElementById('status');
+                if (statusEl) {
+                    statusEl.innerHTML = `<div class="error">❌ 처리 중 오류가 발생했습니다<br><small>${err.message}</small></div>`;
+                }
+                setTimeout(() => {
+                    try { window.close(); } catch (e) { console.warn('Could not close window:', e); }
+                }, 3000);
+            }
+        }
+
+        // 페이지 로드 시 콜백 처리
+        window.addEventListener('load', handleCallback);
+    </script>
+</body>
+</html>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { AutomationConfig, MockYouTubeVideo } from '../types';
-import { generateText } from '../services/geminiService';
-import PromptEditor from './common/PromptEditor';
-import AutomationControls from './common/AutomationControls';
-import LogDisplay from './common/LogDisplay';
-import { usePrompts, useLogger, useAutomation } from '../hooks';
+import { AutomationConfig, MockYouTubeVideo } from '../../types';
+import { generateText } from '../../shared/services/geminiService';
+import PromptEditor from '../../shared/components/common/PromptEditor';
+import AutomationControls from '../../shared/components/common/AutomationControls';
+import LogDisplay from '../../shared/components/common/LogDisplay';
+import { usePrompts, useLogger, useAutomation, useApiKeys } from '../../shared/hooks';
+import YouTubeApiService, { YouTubeVideo, YouTubeSearchResult } from './youtubeApiService';
 
 interface YouTubeDashboardProps {
   config: AutomationConfig;
@@ -22,7 +23,71 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config }) => {
   const { getPrompt, updatePrompt, resetPrompt, interpolatePrompt } = usePrompts('youtube');
   const { logs, addLog, clearLogs } = useLogger();
   const { isAutomating, startAutomation, stopAutomation, isRunning } = useAutomation();
+  const { getApiKey } = useApiKeys(['youtube']);
+  
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchResults, setSearchResults] = useState<YouTubeSearchResult | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedVideos, setSelectedVideos] = useState<YouTubeVideo[]>([]);
+
+  const VIDEOS_PER_PAGE = 10;
+
+  // YouTube 검색 함수
+  const handleSearch = async () => {
+    if (!searchKeyword.trim()) {
+      addLog('검색 키워드를 입력해주세요.', 'error');
+      return;
+    }
+
+    setIsSearching(true);
+    setCurrentPage(1);
+    
+    try {
+      addLog(`'${searchKeyword}' 검색 중... (조회수 낮은 순으로 정렬)`, 'info');
+      
+      const youtubeApiKey = getApiKey('youtube');
+      const youtubeService = new YouTubeApiService(youtubeApiKey || '');
+      
+      let result: YouTubeSearchResult;
+      
+      if (youtubeApiKey) {
+        result = await youtubeService.searchVideos({
+          keyword: searchKeyword,
+          maxResults: 50, // 더 많은 결과를 가져와서 조회수 낮은 순으로 정렬
+          order: 'date' // 최신순으로 먼저 가져온 후 클라이언트에서 조회수 정렬
+        });
+      } else {
+        addLog('YouTube API 키가 없어서 Mock 데이터를 사용합니다.', 'info');
+        result = await youtubeService.searchVideosMock({
+          keyword: searchKeyword,
+          maxResults: 50,
+          order: 'date'
+        });
+      }
+
+      setSearchResults(result);
+      addLog(`${result.videos.length}개 영상을 찾았습니다. (조회수 낮은 순으로 정렬됨)`, 'success');
+      
+    } catch (error) {
+      addLog(`검색 중 오류 발생: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 페이지네이션 관련 계산
+  const totalPages = searchResults ? Math.ceil(searchResults.videos.length / VIDEOS_PER_PAGE) : 0;
+  const currentVideos = searchResults ? 
+    searchResults.videos.slice(
+      (currentPage - 1) * VIDEOS_PER_PAGE, 
+      currentPage * VIDEOS_PER_PAGE
+    ) : [];
+
+  // 페이지 변경
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const runAutomation = async () => {
     addLog('자동화를 시작합니다...', 'info');
