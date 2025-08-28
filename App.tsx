@@ -64,6 +64,8 @@ const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpan
                 return <TwitterThreadsDashboard config={config} onBack={() => {}} hideBackButton={true} />;
               case 'youtube-comment':
                 return <YouTubeDashboard config={config} onBack={() => {}} hideBackButton={true} />;
+              case 'youtube-upload':
+                return <TwitterThreadsDashboard config={config} onBack={() => {}} hideBackButton={true} />;
               default:
                 return <Dashboard config={config} onBack={() => {}} hideBackButton={true} />;
             }

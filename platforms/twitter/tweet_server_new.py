@@ -74,11 +74,11 @@ def tweet_with_image():
         
         # 이미지가 있으면 처리
         if image_file:
-            # 간단한 임시 파일명 생성
-            temp_dir = tempfile.gettempdir()
+            # 메인 프로젝트 폴더에 저장 (../../ 를 통해 ai-marketing-automation-hub로)
+            main_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             # 파일 확장자만 유지
             file_ext = os.path.splitext(image_file.filename)[1] or '.png'
-            image_path = os.path.join(temp_dir, f'img1{file_ext}')
+            image_path = os.path.join(main_dir, f'twitter_temp_image{file_ext}')
             
             # 이미지 저장
             image_file.save(image_path)

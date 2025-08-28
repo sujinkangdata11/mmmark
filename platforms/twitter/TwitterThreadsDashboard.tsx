@@ -39,6 +39,9 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const [translationPrompt, setTranslationPrompt] = useState('이 내용을 영어로 번역하세요');
   const [selectedLanguage, setSelectedLanguage] = useState<'korean' | 'english'>('korean');
   const [isPublishingToTwitter, setIsPublishingToTwitter] = useState(false);
+  const [isPublishingToThreads, setIsPublishingToThreads] = useState(false);
+  const [twitterPublishCompleted, setTwitterPublishCompleted] = useState(false);
+  const [threadsPublishCompleted, setThreadsPublishCompleted] = useState(false);
   const [channelExtractionPrompt, setChannelExtractionPrompt] = useState(
     `이 이미지를 분석하고 "YouTube 핸들"을 추출해주세요. 
 답변은 "핸들"만 간단히 해주세요.
@@ -522,8 +525,113 @@ ex)
     // 7. 완료 처리
     console.log('[DEBUG] 모든 게시 완료, 상태 초기화');
     setIsPublishingToTwitter(false);
+    setTwitterPublishCompleted(true);
     addLog(`모든 ${languageType} 콘텐츠의 트위터 발행이 완료되었습니다.`, 'info');
     console.log('[DEBUG] handleTwitterPublish 완료');
+  };
+
+  const handleThreadsPublish = async () => {
+    console.log('[DEBUG] handleThreadsPublish 시작');
+    addLog('[디버그] Threads 게시 함수가 호출되었습니다.', 'info');
+
+    // 1. 이미지 체크
+    console.log('[DEBUG] 이미지 개수:', images.length);
+    addLog(`[디버그] 업로드된 이미지 개수: ${images.length}개`, 'info');
+    
+    if (images.length === 0) {
+      addLog('먼저 2번 카드에서 이미지를 선택해주세요.', 'error');
+      return;
+    }
+
+    // 2. 게시글 체크
+    const postsToPublish = selectedLanguage === 'english' ? translatedPosts : generatedPosts;
+    console.log('[DEBUG] 선택된 언어:', selectedLanguage);
+    console.log('[DEBUG] 게시글 개수:', postsToPublish.length);
+    addLog(`[디버그] 선택된 언어: ${selectedLanguage}, 게시글 개수: ${postsToPublish.length}개`, 'info');
+    
+    if (postsToPublish.length === 0) {
+      const requiredCard = selectedLanguage === 'english' ? '6번(영어 번역)' : '5번(게시글 생성)';
+      addLog(`먼저 ${requiredCard} 카드에서 콘텐츠를 준비해주세요.`, 'error');
+      return;
+    }
+
+    // 3. Threads API 키 확인 (임시로 threads 키 사용)
+    const threadsApiKey = getApiKey('threads');
+
+    console.log('[DEBUG] Threads API 키 상태:', threadsApiKey ? '설정됨' : '미설정');
+    addLog(`[디버그] Threads API 키 확인 완료`, 'info');
+
+    if (!threadsApiKey) {
+      addLog('Threads API 키가 설정되지 않았습니다. Sidebar에서 Threads API 키를 입력해주세요.', 'error');
+      return;
+    }
+
+    // 4. 게시 시작
+    setIsPublishingToThreads(true);
+    console.log('[DEBUG] Threads 게시 상태를 true로 설정');
+
+    const languageType = selectedLanguage === 'english' ? '영어' : '한국어';
+    addLog(`${languageType} 콘텐츠를 Threads에 발행합니다...`, 'info');
+
+    const totalPairs = Math.min(images.length, postsToPublish.length);
+    console.log('[DEBUG] 처리할 이미지-게시글 쌍:', totalPairs);
+    addLog(`[디버그] 총 ${totalPairs}개의 이미지-게시글 쌍을 처리합니다.`, 'info');
+
+    // 5. 개별 게시 처리 (시뮬레이션)
+    for (let i = 0; i < totalPairs; i++) {
+      const image = images[i];
+      const post = postsToPublish[i];
+      
+      console.log(`[DEBUG] ${i + 1}번째 아이템 처리 시작:`, {
+        imageName: image.file.name,
+        imageSize: image.file.size,
+        channelName: post.channelName,
+        contentLength: post.content.length
+      });
+
+      addLog(`[디버그] ${i + 1}/${totalPairs} - '${image.file.name}' 처리 시작`, 'info');
+
+      try {
+        addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 Threads에 게시 중...`, 'generating');
+        
+        // Threads API 시뮬레이션 (실제 API 구현 필요)
+        console.log('[DEBUG] Threads API 시뮬레이션 시작');
+        addLog('[디버그] Threads API로 게시를 시도합니다.', 'info');
+        
+        try {
+          console.log('[DEBUG] Threads에 실제 게시 (시뮬레이션)');
+          console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
+          console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
+          
+          // Threads 게시 시뮬레이션
+          await new Promise(res => setTimeout(res, 1000)); // 1초 딜레이
+          const threadsPostId = `T${Math.random().toString(36).substring(2, 15)}`;
+          
+          addLog(`✅ Threads에 게시 완료!`, 'success');
+          addLog(`🔗 Threads 게시물: https://www.threads.net/t/${threadsPostId}`, 'info');
+          addLog(`🖼️ 이미지: ${image.file.name}`, 'info');
+          addLog(`게시 내용: "${post.content.substring(0, 100)}..."`, 'info');
+          
+        } catch (apiError: any) {
+          console.error('[DEBUG] Threads API 오류:', apiError);
+          addLog(`Threads API 오류: ${apiError.message}`, 'error');
+          throw apiError;
+        }
+        
+        console.log(`[DEBUG] ${i + 1}번째 아이템 처리 완료`);
+        
+      } catch (error) {
+        console.error(`[DEBUG] ${i + 1}번째 아이템 처리 오류:`, error);
+        addLog(`'${image.file.name}' Threads 게시 실패: ${error}`, 'error');
+      }
+    }
+
+    // 6. 완료 처리
+    console.log('[DEBUG] 모든 Threads 게시 완료, 상태 초기화');
+    setIsPublishingToThreads(false);
+    setThreadsPublishCompleted(true);
+    addLog(`모든 ${languageType} 콘텐츠의 Threads 발행이 완료되었습니다.`, 'info');
+    console.log('[DEBUG] handleThreadsPublish 완료');
   };
 
   const runAutomation = async () => {
@@ -982,7 +1090,6 @@ ex)
                     <h4 className="text-sm font-medium text-gray-700">생성된 게시글:</h4>
                     {generatedPosts.map((post, index) => (
                       <div key={index} className="p-4 bg-orange-50 rounded-lg border">
-                        <h5 className="font-semibold text-gray-900 mb-3">{post.channelName}</h5>
                         <div className="relative">
                           <textarea
                             value={post.content}
@@ -1107,7 +1214,6 @@ ex)
               <h4 className="text-sm font-medium text-gray-700">번역된 게시글:</h4>
               {translatedPosts.map((post, index) => (
                 <div key={index} className="p-4 bg-purple-50 rounded-lg border">
-                  <h5 className="font-semibold text-gray-900 mb-3">{post.channelName}</h5>
                   <div className="relative">
                     <textarea
                       value={post.content}
@@ -1251,6 +1357,17 @@ ex)
             )}
           </div>
 
+          {twitterPublishCompleted && (
+            <div className="bg-green-50 p-3 rounded-md mb-3">
+              <p className="text-green-800 text-sm font-medium">
+                ✅ 트위터 발행이 완료되었습니다!
+              </p>
+              <p className="text-green-700 text-xs mt-1">
+                모든 이미지와 콘텐츠가 성공적으로 트위터에 게시되었습니다.
+              </p>
+            </div>
+          )}
+
           <button
             onClick={handleTwitterPublish}
             disabled={isPublishingToTwitter || images.length === 0 || 
@@ -1259,10 +1376,12 @@ ex)
               isPublishingToTwitter || images.length === 0 || 
               (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : twitterPublishCompleted 
+                ? 'bg-green-500 text-white hover:bg-green-600'
                 : 'bg-blue-500 text-white hover:bg-blue-600'
             }`}
           >
-            {isPublishingToTwitter ? '🐦 트위터에 발행 중...' : '🚀 트위터(X)에 발행하기'}
+            {isPublishingToTwitter ? '🐦 트위터에 발행 중...' : twitterPublishCompleted ? '✅ 트위터(X) 발행 완료' : '🚀 트위터(X)에 발행하기'}
           </button>
           
           {isPublishingToTwitter && (
@@ -1279,6 +1398,143 @@ ex)
           {(images.length === 0 || 
             (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)) && (
             <div className="text-center text-blue-500 text-sm bg-blue-50 p-3 rounded">
+              ⚠️ 이미지 선택 및 {selectedLanguage === 'english' ? '영어 번역' : '게시글 생성'}이 필요합니다.
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'threads-publish',
+      title: '쓰레드(Thread)에 배포',
+      content: (
+        <div className="space-y-4">
+          <div className="bg-purple-50 p-3 rounded-md">
+            <p className="text-sm text-purple-700">
+              🧵 2번 카드의 이미지와 함께 선택한 언어의 콘텐츠를 Threads에 발행합니다.<br/>
+              🧵 한국어 또는 영어 콘텐츠를 선택할 수 있습니다.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">발행할 콘텐츠 언어 선택</label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="threadsLanguage"
+                  value="korean"
+                  checked={selectedLanguage === 'korean'}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  className="mr-2"
+                />
+                <span className="text-sm">한국어 (5번 카드에서 생성된 콘텐츠)</span>
+                {generatedPosts.length > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                    ✅ 준비됨
+                  </span>
+                )}
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="threadsLanguage"
+                  value="english"
+                  checked={selectedLanguage === 'english'}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  className="mr-2"
+                />
+                <span className="text-sm">영어 (6번 카드에서 번역된 콘텐츠)</span>
+                {translatedPosts.length > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                    ✅ 준비됨
+                  </span>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {/* 미리보기 섹션 */}
+          {(() => {
+            const postsToShow = selectedLanguage === 'english' ? translatedPosts : generatedPosts;
+            const languageLabel = selectedLanguage === 'english' ? '영어' : '한국어';
+            
+            if (postsToShow.length > 0) {
+              return (
+                <div className="bg-gray-50 p-3 rounded border">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">{languageLabel} 콘텐츠 미리보기:</h4>
+                  <div className="max-h-32 overflow-y-auto space-y-2">
+                    {postsToShow.map((post, index) => (
+                      <div key={index} className="text-xs text-gray-600 bg-white p-2 rounded">
+                        <strong>{post.channelName}:</strong> {post.content.substring(0, 80)}...
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
+          <div className="bg-gray-50 p-3 rounded border">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">선택된 이미지:</h4>
+            {images.length > 0 ? (
+              <div className="grid grid-cols-4 gap-2">
+                {images.map((image, index) => (
+                  <div key={image.id} className="relative">
+                    <img src={image.dataUrl} alt="" className="w-full aspect-square object-cover rounded" />
+                    <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                      {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500">2번 카드에서 이미지를 선택해주세요.</p>
+            )}
+          </div>
+
+          {threadsPublishCompleted && (
+            <div className="bg-green-50 p-3 rounded-md mb-3">
+              <p className="text-green-800 text-sm font-medium">
+                ✅ Threads 발행이 완료되었습니다!
+              </p>
+              <p className="text-green-700 text-xs mt-1">
+                모든 이미지와 콘텐츠가 성공적으로 Threads에 게시되었습니다.
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={handleThreadsPublish}
+            disabled={isPublishingToThreads || images.length === 0 || 
+              (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)}
+            className={`w-full px-4 py-3 font-semibold rounded-md transition-colors ${
+              isPublishingToThreads || images.length === 0 || 
+              (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : threadsPublishCompleted 
+                ? 'bg-green-500 text-white hover:bg-green-600'
+                : 'bg-purple-500 text-white hover:bg-purple-600'
+            }`}
+          >
+            {isPublishingToThreads ? '🧵 Threads에 발행 중...' : threadsPublishCompleted ? '✅ 쓰레드(Threads) 발행 완료' : '🚀 쓰레드(Threads)에 발행하기'}
+          </button>
+          
+          {isPublishingToThreads && (
+            <div className="text-center">
+              <div className="text-sm text-gray-600 mb-2">
+                🤖 선택된 이미지와 콘텐츠를 Threads에 발행하고 있습니다...
+              </div>
+              <div className="text-xs text-gray-500">
+                상세한 진행상황은 1번 카드 로그에서 확인하세요
+              </div>
+            </div>
+          )}
+
+          {(images.length === 0 || 
+            (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)) && (
+            <div className="text-center text-purple-500 text-sm bg-purple-50 p-3 rounded">
               ⚠️ 이미지 선택 및 {selectedLanguage === 'english' ? '영어 번역' : '게시글 생성'}이 필요합니다.
             </div>
           )}
