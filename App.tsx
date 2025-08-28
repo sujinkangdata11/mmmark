@@ -8,6 +8,7 @@ import TwitterThreadsDashboard from './platforms/twitter/TwitterThreadsDashboard
 import YouTubeDashboard from './platforms/youtube-feed/YouTubeDashboard';
 import YouTubeUploadDashboard from './platforms/youtube-upload/YouTubeUploadDashboard';
 import Sidebar from './shared/components/Sidebar';
+import FocusTimer from './shared/components/common/FocusTimer';
 
 
 
@@ -19,8 +20,7 @@ interface AutomationCardProps {
 }
 
 const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpanded }) => {
-  const { id, title, description, icon, completed, goal } = stat;
-  const percentage = goal > 0 ? (completed / goal) * 100 : 0;
+  const { id, title, description, icon } = stat;
   
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
@@ -41,16 +41,7 @@ const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpan
         
         <p className="text-gray-600 mb-4">{description}</p>
         
-        <div className="flex items-center space-x-4">
-          <span className="text-sm font-medium text-gray-700">오늘의 진행률:</span>
-          <div className="flex-1 bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <span className="text-sm text-gray-600">{completed} / {goal}</span>
-        </div>
+        <FocusTimer />
       </div>
 
       {/* 가로 스크롤 대시보드 */}

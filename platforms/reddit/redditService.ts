@@ -59,7 +59,7 @@ export class RedditService {
         'password': this.redditPassword
       });
       
-      const response = await fetch('https://www.reddit.com/api/v1/access_token', {
+      const response = await fetch('https://marketing.anime-toon-7923.workers.dev/api/v1/access_token', {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${credentials}`,
@@ -77,7 +77,10 @@ export class RedditService {
       }
 
       const data = await response.json();
+      console.log('🔍 OAuth 응답 전체 데이터:', data);
+      
       this.accessToken = data.access_token;
+      console.log('🔑 발급된 토큰:', this.accessToken);
       
       console.log('✅ Reddit OAuth 토큰 발급 성공!', {
         token_type: data.token_type,
@@ -152,7 +155,7 @@ export class RedditService {
       const cleanSubredditName = subredditName.replace(/^r\//, '');
       
       // 인증된 Reddit OAuth API 사용
-      const apiUrl = `https://oauth.reddit.com/r/${cleanSubredditName}/${sort}?limit=${limit}`;
+      const apiUrl = `https://marketing.anime-toon-7923.workers.dev/api/reddit/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
       console.log(`🔍 Fetching authenticated Reddit data: ${apiUrl}`);
       
       const response = await fetch(apiUrl, {
@@ -174,8 +177,12 @@ export class RedditService {
       }
 
       const data: RedditApiResponse = await response.json();
+      console.log('🔍 프록시 서버 응답 데이터:', data);
+      console.log('🔍 data.data 존재?', !!data?.data);
+      console.log('🔍 data.data.children 존재?', !!data?.data?.children);
       
       if (!data?.data?.children) {
+        console.log('❌ 응답 구조 확인:', JSON.stringify(data, null, 2));
         throw new Error('예상치 못한 API 응답 형식입니다.');
       }
 
