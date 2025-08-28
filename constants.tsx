@@ -48,7 +48,7 @@ const ThreadsIcon = () => (
 );
 
 const MultiPlatformVideoIcon = () => (
-    <div className="flex items-center justify-center relative w-10 h-10">
+    <div className="flex items-center justify-center relative w-8 h-8">
         {/* YouTube icon (main, larger) */}
         <div className="absolute top-0 left-0 z-10">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-600" viewBox="0 0 24 24" fill="currentColor">

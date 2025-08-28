@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 5175,
         strictPort: true,
+        // headers: {
+        //   'Cross-Origin-Embedder-Policy': 'require-corp',
+        //   'Cross-Origin-Opener-Policy': 'same-origin'
+        // },
         proxy: {
           '/api/reddit': {
             target: 'https://www.reddit.com',

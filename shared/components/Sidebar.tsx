@@ -3,7 +3,7 @@ import ApiKeyInput from './common/ApiKeyInput';
 import { useApiKeys } from '../hooks';
 
 const Sidebar: React.FC = () => {
-  const { getApiKey, setApiKey } = useApiKeys(['gemini', 'username', 'clientId', 'clientSecret', 'redditAccount', 'redditPassword', 'twitter', 'threads', 'youtube', 'discordWebhook', 'googleDriveClientId', 'googleDriveClientSecret']);
+  const { getApiKey, setApiKey, resetApiKey } = useApiKeys(['gemini', 'username', 'clientId', 'clientSecret', 'redditAccount', 'redditPassword', 'twitter', 'threads', 'youtube', 'discordWebhook', 'googleDriveClientId', 'googleDriveClientSecret']);
   
   // 각 섹션의 펼침/접힘 상태 (기본값: 모두 펼쳐짐)
   const [expandedSections, setExpandedSections] = useState({
@@ -26,7 +26,8 @@ const Sidebar: React.FC = () => {
   
   const ChevronIcon = ({ isExpanded }: { isExpanded: boolean }) => (
     <svg 
-      className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+      className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+      style={{ width: '14px', height: '14px' }}
       fill="none" 
       stroke="currentColor" 
       viewBox="0 0 24 24"
@@ -55,6 +56,7 @@ const Sidebar: React.FC = () => {
                   label="Gemini API"
                   value={getApiKey('gemini')}
                   onChange={(value) => setApiKey('gemini', value)}
+                  onReset={() => resetApiKey('gemini')}
                   id="gemini-api-key"
                 />
               </div>
@@ -86,12 +88,14 @@ const Sidebar: React.FC = () => {
                   label="Client ID"
                   value={getApiKey('clientId')}
                   onChange={(value) => setApiKey('clientId', value)}
+                  onReset={() => resetApiKey('clientId')}
                   id="reddit-client-id"
                 />
                 <ApiKeyInput 
                   label="Client Secret"
                   value={getApiKey('clientSecret')}
                   onChange={(value) => setApiKey('clientSecret', value)}
+                  onReset={() => resetApiKey('clientSecret')}
                   id="reddit-client-secret"
                 />
                 <div>
@@ -108,6 +112,7 @@ const Sidebar: React.FC = () => {
                   label="Reddit 비밀번호"
                   value={getApiKey('redditPassword')}
                   onChange={(value) => setApiKey('redditPassword', value)}
+                  onReset={() => resetApiKey('redditPassword')}
                   id="reddit-password"
                   placeholder="Reddit 계정 비밀번호"
                 />
@@ -130,6 +135,7 @@ const Sidebar: React.FC = () => {
                   label="YouTube Data API"
                   value={getApiKey('youtube')}
                   onChange={(value) => setApiKey('youtube', value)}
+                  onReset={() => resetApiKey('youtube')}
                   id="youtube-api-key"
                 />
               </div>
@@ -151,6 +157,7 @@ const Sidebar: React.FC = () => {
                   label="Client ID"
                   value={getApiKey('googleDriveClientId')}
                   onChange={(value) => setApiKey('googleDriveClientId', value)}
+                  onReset={() => resetApiKey('googleDriveClientId')}
                   id="google-drive-client-id"
                   placeholder="구글 콘솔에서 생성한 Client ID"
                 />
@@ -158,6 +165,7 @@ const Sidebar: React.FC = () => {
                   label="Client Secret"
                   value={getApiKey('googleDriveClientSecret')}
                   onChange={(value) => setApiKey('googleDriveClientSecret', value)}
+                  onReset={() => resetApiKey('googleDriveClientSecret')}
                   id="google-drive-client-secret"
                   placeholder="구글 콘솔에서 생성한 Client Secret"
                 />
@@ -180,6 +188,7 @@ const Sidebar: React.FC = () => {
                   label="Consumer Key (API Key)"
                   value={getApiKey('twitterConsumerKey')}
                   onChange={(value) => setApiKey('twitterConsumerKey', value)}
+                  onReset={() => resetApiKey('twitterConsumerKey')}
                   id="twitter-consumer-key"
                   placeholder="Twitter 개발자 포털의 Consumer Key"
                 />
@@ -187,6 +196,7 @@ const Sidebar: React.FC = () => {
                   label="Consumer Secret"
                   value={getApiKey('twitterConsumerSecret')}
                   onChange={(value) => setApiKey('twitterConsumerSecret', value)}
+                  onReset={() => resetApiKey('twitterConsumerSecret')}
                   id="twitter-consumer-secret"
                   placeholder="Twitter 개발자 포털의 Consumer Secret"
                 />
@@ -194,6 +204,7 @@ const Sidebar: React.FC = () => {
                   label="Access Token"
                   value={getApiKey('twitterAccessToken')}
                   onChange={(value) => setApiKey('twitterAccessToken', value)}
+                  onReset={() => resetApiKey('twitterAccessToken')}
                   id="twitter-access-token"
                   placeholder="Twitter 개발자 포털의 Access Token"
                 />
@@ -201,6 +212,7 @@ const Sidebar: React.FC = () => {
                   label="Access Token Secret"
                   value={getApiKey('twitterAccessTokenSecret')}
                   onChange={(value) => setApiKey('twitterAccessTokenSecret', value)}
+                  onReset={() => resetApiKey('twitterAccessTokenSecret')}
                   id="twitter-access-token-secret"
                   placeholder="Twitter 개발자 포털의 Access Token Secret"
                 />
@@ -223,6 +235,7 @@ const Sidebar: React.FC = () => {
                   label="Bearer Token"
                   value={getApiKey('twitterBearerToken')}
                   onChange={(value) => setApiKey('twitterBearerToken', value)}
+                  onReset={() => resetApiKey('twitterBearerToken')}
                   id="twitter-bearer-token"
                   placeholder="Twitter 개발자 포털의 Bearer Token"
                 />
@@ -245,6 +258,7 @@ const Sidebar: React.FC = () => {
                   label="Threads API"
                   value={getApiKey('threads')}
                   onChange={(value) => setApiKey('threads', value)}
+                  onReset={() => resetApiKey('threads')}
                   id="threads-api-key"
                 />
               </div>
@@ -266,6 +280,7 @@ const Sidebar: React.FC = () => {
                   label="Discord Webhook URL"
                   value={getApiKey('discordWebhook')}
                   onChange={(value) => setApiKey('discordWebhook', value)}
+                  onReset={() => resetApiKey('discordWebhook')}
                   id="discord-webhook"
                   placeholder="https://discord.com/api/webhooks/..."
                 />

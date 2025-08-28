@@ -111,12 +111,32 @@ export const useApiKeys = (initialKeys: string[] = []) => {
   const getApiKey = (keyName: string) => {
     // 사용자가 입력한 키가 있으면 그대로 사용 (평문)
     const userKey = globalApiKeys[keyName];
+    
+    // 명시적으로 초기화된 경우 빈 문자열 반환 (UI에서는 비어보임)
+    if (userKey === '__RESET__') {
+      return '';
+    }
+    
+    // 사용자가 입력한 키가 있고 기본값과 다른 경우
     if (userKey && userKey !== getDefaultApiKeys()[keyName]) {
       return userKey;
     }
+    
     // 기본 키를 사용하는 경우 해독해서 반환
     const encryptedDefault = encryptedDefaultApiKeys[keyName];
     return encryptedDefault ? simpleDecrypt(encryptedDefault) : '';
+  };
+
+  const resetApiKey = (keyName: string) => {
+    console.log(`[DEBUG] Resetting API key: ${keyName} to empty (will use default)`);
+    // 특별한 마커를 사용해서 "명시적으로 초기화됨"을 표시
+    const newKeys = { ...globalApiKeys, [keyName]: '__RESET__' };
+    globalApiKeys = newKeys;
+    saveApiKeysToStorage(newKeys);
+    console.log(`[DEBUG] Reset ${keyName} - input cleared, will use default value`);
+    
+    // 모든 리스너에게 변경사항 알림
+    listeners.forEach(listener => listener(newKeys));
   };
 
   const validateKeys = (requiredKeys: string[]) => {
@@ -139,6 +159,7 @@ export const useApiKeys = (initialKeys: string[] = []) => {
     apiKeys,
     setApiKey,
     getApiKey,
+    resetApiKey,
     validateKeys
   };
 };

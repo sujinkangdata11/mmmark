@@ -6,6 +6,7 @@ import Dashboard from './shared/components/Dashboard';
 import RedditDashboard from './platforms/reddit/RedditDashboard';
 import TwitterThreadsDashboard from './platforms/twitter/TwitterThreadsDashboard';
 import YouTubeDashboard from './platforms/youtube-feed/YouTubeDashboard';
+import YouTubeUploadDashboard from './platforms/youtube-upload/YouTubeUploadDashboard';
 import Sidebar from './shared/components/Sidebar';
 
 
@@ -65,7 +66,7 @@ const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpan
               case 'youtube-comment':
                 return <YouTubeDashboard config={config} onBack={() => {}} hideBackButton={true} />;
               case 'youtube-upload':
-                return <TwitterThreadsDashboard config={config} onBack={() => {}} hideBackButton={true} />;
+                return <YouTubeUploadDashboard config={config} onBack={() => {}} hideBackButton={true} />;
               default:
                 return <Dashboard config={config} onBack={() => {}} hideBackButton={true} />;
             }
@@ -101,7 +102,7 @@ const App: React.FC = () => {
   }, [dailyStats]);
 
   return (
-    <div className="min-h-screen bg-white py-[70px] px-[120px]">
+    <div className="min-h-screen bg-white p-[100px]">
       {/* 헤더 - 전체 화면 너비 */}
       <div className="text-center py-8 bg-white border-b border-gray-200 mb-8">
         <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
