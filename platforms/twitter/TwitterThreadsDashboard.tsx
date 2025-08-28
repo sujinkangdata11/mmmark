@@ -42,6 +42,7 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const [isPublishingToThreads, setIsPublishingToThreads] = useState(false);
   const [twitterPublishCompleted, setTwitterPublishCompleted] = useState(false);
   const [threadsPublishCompleted, setThreadsPublishCompleted] = useState(false);
+  const [deployedPosts, setDeployedPosts] = useState<{platform: string, channelName: string, content: string, link: string, postId: string}[]>([]);
   const [channelExtractionPrompt, setChannelExtractionPrompt] = useState(
     `이 이미지를 분석하고 "YouTube 핸들"을 추출해주세요. 
 답변은 "핸들"만 간단히 해주세요.
@@ -501,6 +502,16 @@ ex)
           addLog(`🖼️ 이미지가 자동으로 다운로드되었습니다`, 'info');
           addLog(`게시할 내용: "${post.content.substring(0, 100)}..."`, 'info');
           
+          // 배포된 게시물 정보 저장
+          const deployedPost = {
+            platform: 'twitter',
+            channelName: post.channelName,
+            content: post.content,
+            link: `https://twitter.com/user/status/${tweetId}`,
+            postId: tweetId
+          };
+          setDeployedPosts(prev => [...prev, deployedPost]);
+          
         } catch (apiError: any) {
           console.error('[DEBUG] Twitter API 오류:', apiError);
           
@@ -612,6 +623,16 @@ ex)
           addLog(`🖼️ 이미지: ${image.file.name}`, 'info');
           addLog(`게시 내용: "${post.content.substring(0, 100)}..."`, 'info');
           
+          // 배포된 게시물 정보 저장
+          const deployedPost = {
+            platform: 'threads',
+            channelName: post.channelName,
+            content: post.content,
+            link: `https://www.threads.net/t/${threadsPostId}`,
+            postId: threadsPostId
+          };
+          setDeployedPosts(prev => [...prev, deployedPost]);
+          
         } catch (apiError: any) {
           console.error('[DEBUG] Threads API 오류:', apiError);
           addLog(`Threads API 오류: ${apiError.message}`, 'error');
@@ -632,6 +653,90 @@ ex)
     setThreadsPublishCompleted(true);
     addLog(`모든 ${languageType} 콘텐츠의 Threads 발행이 완료되었습니다.`, 'info');
     console.log('[DEBUG] handleThreadsPublish 완료');
+  };
+
+  // 모든 배포된 게시물을 Discord로 한번에 알림 보내기
+  const handleSendAllDiscordNotifications = async (allPosts: {platform: string, channelName: string, content: string, link: string, postId: string}[]) => {
+    const webhookUrl = getApiKey('discordWebhook');
+    
+    if (!webhookUrl) {
+      alert('Discord Webhook URL이 설정되지 않았습니다. 사이드바에서 설정해주세요.');
+      return;
+    }
+
+    try {
+      // 메인 요약 Embed
+      const mainEmbed = {
+        title: "🎯 Twitter & Threads 마케팅 자동화 완료!",
+        description: `AutoVid 홍보 게시물이 성공적으로 배포되었습니다.`,
+        color: 0x1da1f2, // Twitter 블루
+        fields: [
+          {
+            name: "📊 배포 통계",
+            value: `총 **${allPosts.length}개** 게시물 작성 완료`,
+            inline: true
+          },
+          {
+            name: "⏰ 완료 시간",
+            value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
+            inline: true
+          }
+        ],
+        thumbnail: {
+          url: "https://cdn-icons-png.flaticon.com/512/174/174876.png" // Twitter 아이콘
+        },
+        timestamp: new Date().toISOString(),
+        footer: {
+          text: "AI Marketing Automation Hub",
+          icon_url: "https://cdn-icons-png.flaticon.com/512/2099/2099058.png"
+        }
+      };
+
+      // 개별 게시물 Embeds (최대 9개)
+      const postEmbeds = allPosts.slice(0, 9).map((post, index) => ({
+        title: `${post.platform === 'twitter' ? '🐦' : '📱'} ${post.platform === 'twitter' ? 'Twitter' : 'Threads'} 게시물 #${index + 1}`,
+        description: `**채널:** ${post.channelName}\n**게시물 ID:** ${post.postId}`,
+        color: post.platform === 'twitter' ? 0x1da1f2 : 0x9c27b0,
+        fields: [
+          {
+            name: "🔗 게시물 링크",
+            value: `[${post.platform === 'twitter' ? 'Twitter' : 'Threads'}에서 보기](${post.link})`,
+            inline: false
+          },
+          {
+            name: "📝 게시물 내용",
+            value: post.content.length > 200 ? post.content.substring(0, 200) + '...' : post.content,
+            inline: false
+          }
+        ]
+      }));
+
+      const payload = {
+        content: `🚀 **AutoVid Twitter & Threads 마케팅 완료!**\n${allPosts.length}개 게시물이 성공적으로 배포되었습니다.`,
+        embeds: [mainEmbed, ...postEmbeds].slice(0, 10) // Discord는 최대 10개 embed까지
+      };
+
+      console.log('🚀 Discord로 메시지 전송 중...', payload);
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        console.log('✅ Discord 알림 전송 성공');
+        alert('✅ Discord로 알림이 성공적으로 전송되었습니다!');
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Discord API 에러: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('❌ Discord 알림 전송 실패:', error);
+      alert(`Discord 알림 전송 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
   };
 
   const runAutomation = async () => {
@@ -1536,6 +1641,71 @@ ex)
             (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)) && (
             <div className="text-center text-purple-500 text-sm bg-purple-50 p-3 rounded">
               ⚠️ 이미지 선택 및 {selectedLanguage === 'english' ? '영어 번역' : '게시글 생성'}이 필요합니다.
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
+      id: 'discord-notification',
+      title: '디스코드로 알림주기',
+      description: '배포된 게시물의 Twitter & Threads 링크를 Discord로 알림을 보냅니다.',
+      content: (
+        <div className="space-y-4">
+          {deployedPosts.length === 0 ? (
+            <div className="text-center text-gray-500 bg-gray-50 p-4 rounded-md">
+              먼저 6번/7번 카드에서 게시물을 배포해주세요.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 p-3 rounded-md">
+                <p className="text-green-800 text-sm font-medium">
+                  ✅ {deployedPosts.length}개 게시물이 성공적으로 배포되었습니다
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                {deployedPosts.map((item, index) => (
+                  <div key={index} className="bg-white p-4 rounded-md border border-blue-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm font-medium text-blue-900">
+                        {item.platform === 'twitter' ? '🐦 Twitter' : '📱 Threads'} - {item.channelName}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        게시물 ID: {item.postId}
+                      </span>
+                    </div>
+                    
+                    <div className="bg-blue-50 p-3 rounded-md mb-3">
+                      <h4 className="text-xs font-semibold text-blue-700 mb-2">게시물 링크:</h4>
+                      <a
+                        href={item.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 underline break-all"
+                      >
+                        {item.link}
+                      </a>
+                    </div>
+                    
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <h4 className="text-xs font-semibold text-gray-700 mb-2">게시물 내용:</h4>
+                      <p className="text-sm text-gray-600">
+                        {item.content.length > 150 ? item.content.substring(0, 150) + '...' : item.content}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="text-center mt-6">
+                <button
+                  onClick={() => handleSendAllDiscordNotifications(deployedPosts)}
+                  className="px-8 py-4 text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors font-semibold text-lg"
+                >
+                  모든 게시물을 Discord로 한번에 알림하기 ({deployedPosts.length}개)
+                </button>
+              </div>
             </div>
           )}
         </div>
