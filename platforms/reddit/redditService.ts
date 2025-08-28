@@ -249,7 +249,7 @@ export class RedditService {
       console.log(`🔐 댓글 작성을 위한 OAuth 토큰 발급 완료`);
       
       // Reddit API로 댓글 작성
-      const apiUrl = 'https://oauth.reddit.com/api/comment';
+      const apiUrl = 'https://marketing.anime-toon-7923.workers.dev/api/comment';
       
       const formData = new URLSearchParams({
         'api_type': 'json',
