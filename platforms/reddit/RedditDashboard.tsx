@@ -467,7 +467,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
           }
         ],
         thumbnail: {
-          url: "https://cdn-icons-png.flaticon.com/512/174/174857.png" // Reddit 아이콘
+          url: "https://cdn-icons-png.flaticon.com/512/2111/2111589.png" // Reddit 아이콘
         },
         timestamp: new Date().toISOString(),
         footer: {
