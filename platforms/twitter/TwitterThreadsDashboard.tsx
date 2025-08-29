@@ -37,12 +37,15 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const [translatedPosts, setTranslatedPosts] = useState<{channelName: string, content: string, originalContent: string}[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationPrompt, setTranslationPrompt] = useState('이 내용을 영어로 번역하세요');
-  const [selectedLanguage, setSelectedLanguage] = useState<'korean' | 'english'>('korean');
+  const [selectedLanguage, setSelectedLanguage] = useState<'korean' | 'english' | 'video-with-english' | 'video-only'>('korean');
   const [isPublishingToTwitter, setIsPublishingToTwitter] = useState(false);
   const [isPublishingToThreads, setIsPublishingToThreads] = useState(false);
   const [twitterPublishCompleted, setTwitterPublishCompleted] = useState(false);
   const [threadsPublishCompleted, setThreadsPublishCompleted] = useState(false);
   const [deployedPosts, setDeployedPosts] = useState<{platform: string, channelName: string, content: string, link: string, postId: string}[]>([]);
+  const [videoFiles, setVideoFiles] = useState<UploadedImage[]>([]);
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
   const [channelExtractionPrompt, setChannelExtractionPrompt] = useState(
     `이 이미지를 분석하고 "YouTube 핸들"을 추출해주세요. 
 답변은 "핸들"만 간단히 해주세요.
@@ -74,6 +77,39 @@ ex)
 
   const handleDeleteImage = (id: string) => {
     setImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  const handleVideoUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      // 비디오 파일만 허용
+      if (!file.type.startsWith('video/')) {
+        addLog(`${file.name}은(는) 영상 파일이 아닙니다.`, 'error');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const newVideo: UploadedImage = {
+          id: `video-${file.name}-${new Date().getTime()}`,
+          file: file,
+          dataUrl: e.target?.result as string,
+        };
+        setVideoFiles(prev => [...prev, newVideo]);
+        addLog(`영상 파일 '${file.name}'이 추가되었습니다.`, 'success');
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDeleteVideo = (id: string) => {
+    const deletedVideo = videoFiles.find(video => video.id === id);
+    if (deletedVideo) {
+      addLog(`영상 파일 '${deletedVideo.file.name}'을(를) 삭제했습니다.`, 'info');
+      setVideoFiles(prev => prev.filter(video => video.id !== id));
+    }
   };
 
   const handleGoogleDriveImport = async () => {
@@ -192,12 +228,12 @@ ex)
     console.log('[DEBUG] isRunning():', isRunning());
 
     for (const image of images) {
-      console.log('[DEBUG] for 루프 안에 들어옴, image:', image.file.name);
+      console.log('[DEBUG] for 루프 안에 들어옴, image:', media.file.name);
       // 채널명 추출은 독립적인 기능이므로 isRunning() 체크 제거
       // if (!isRunning()) break;
       
       try {
-        addLog(`'${image.file.name}'에서 채널명 추출 중...`, 'generating');
+        addLog(`'${media.file.name}'에서 채널명 추출 중...`, 'generating');
         addLog(`프롬프트: ${channelExtractionPrompt.substring(0, 50)}...`, 'info');
         addLog(`이미지 데이터: ${image.dataUrl ? 'OK' : 'NONE'}`, 'info');
         
@@ -215,9 +251,9 @@ ex)
           channelName: formattedChannelName
         });
         
-        addLog(`'${image.file.name}': ${formattedChannelName}`, 'success');
+        addLog(`'${media.file.name}': ${formattedChannelName}`, 'success');
       } catch (error) {
-        addLog(`'${image.file.name}' 채널명 추출 실패: ${error}`, 'error');
+        addLog(`'${media.file.name}' 채널명 추출 실패: ${error}`, 'error');
         results.push({
           imageId: image.id,
           channelName: '추출 실패'
@@ -403,25 +439,46 @@ ex)
     console.log('[DEBUG] handleTwitterPublish 시작');
     addLog('[디버그] Twitter 게시 함수가 호출되었습니다.', 'info');
 
-    // 1. 이미지 체크
+    // 1. 미디어 체크 (선택된 옵션에 따라)
+    console.log('[DEBUG] 선택된 언어:', selectedLanguage);
     console.log('[DEBUG] 이미지 개수:', images.length);
-    addLog(`[디버그] 업로드된 이미지 개수: ${images.length}개`, 'info');
+    console.log('[DEBUG] 비디오 개수:', videoFiles.length);
+    addLog(`[디버그] 선택된 옵션: ${selectedLanguage}`, 'info');
+    addLog(`[디버그] 이미지: ${images.length}개, 비디오: ${videoFiles.length}개`, 'info');
     
-    if (images.length === 0) {
-      addLog('먼저 2번 카드에서 이미지를 선택해주세요.', 'error');
-      return;
+    if (selectedLanguage === 'video-only' || selectedLanguage === 'video-with-english') {
+      // 비디오 옵션인 경우
+      if (videoFiles.length === 0) {
+        addLog('먼저 7번 카드에서 비디오를 선택해주세요.', 'error');
+        return;
+      }
+    } else {
+      // 이미지 옵션인 경우
+      if (images.length === 0) {
+        addLog('먼저 2번 카드에서 이미지를 선택해주세요.', 'error');
+        return;
+      }
     }
 
-    // 2. 게시글 체크
-    const postsToPublish = selectedLanguage === 'english' ? translatedPosts : generatedPosts;
-    console.log('[DEBUG] 선택된 언어:', selectedLanguage);
-    console.log('[DEBUG] 게시글 개수:', postsToPublish.length);
-    addLog(`[디버그] 선택된 언어: ${selectedLanguage}, 게시글 개수: ${postsToPublish.length}개`, 'info');
-    
-    if (postsToPublish.length === 0) {
-      const requiredCard = selectedLanguage === 'english' ? '6번(영어 번역)' : '5번(게시글 생성)';
-      addLog(`먼저 ${requiredCard} 카드에서 콘텐츠를 준비해주세요.`, 'error');
-      return;
+    // 2. 게시글 체크 (video-only는 텍스트 없이 진행)
+    let postsToPublish: any[] = [];
+    if (selectedLanguage !== 'video-only') {
+      postsToPublish = selectedLanguage === 'english' || selectedLanguage === 'video-with-english' 
+        ? translatedPosts 
+        : generatedPosts;
+      
+      console.log('[DEBUG] 게시글 개수:', postsToPublish.length);
+      addLog(`[디버그] 게시글 개수: ${postsToPublish.length}개`, 'info');
+      
+      if (postsToPublish.length === 0) {
+        const requiredCard = selectedLanguage === 'english' || selectedLanguage === 'video-with-english' 
+          ? '6번(영어 번역)' 
+          : '5번(게시글 생성)';
+        addLog(`먼저 ${requiredCard} 카드에서 콘텐츠를 준비해주세요.`, 'error');
+        return;
+      }
+    } else {
+      addLog('[디버그] video-only 모드: 텍스트 없이 비디오만 업로드', 'info');
     }
 
     // 3. Twitter API 키 확인
@@ -459,28 +516,38 @@ ex)
     console.log('[DEBUG] 게시 상태를 true로 설정');
 
     const languageType = selectedLanguage === 'english' ? '영어' : '한국어';
-    addLog(`${languageType} 콘텐츠를 트위터에 발행합니다...`, 'info');
+    const mediaType = (selectedLanguage === 'video-only' || selectedLanguage === 'video-with-english') ? '비디오' : '이미지';
+    addLog(`${mediaType} ${languageType} 콘텐츠를 트위터에 발행합니다...`, 'info');
 
-    const totalPairs = Math.min(images.length, postsToPublish.length);
-    console.log('[DEBUG] 처리할 이미지-게시글 쌍:', totalPairs);
-    addLog(`[디버그] 총 ${totalPairs}개의 이미지-게시글 쌍을 처리합니다.`, 'info');
+    // 미디어와 게시글 쌍 계산
+    const mediaFiles = (selectedLanguage === 'video-only' || selectedLanguage === 'video-with-english') ? videoFiles : images;
+    const totalPairs = selectedLanguage === 'video-only' ? mediaFiles.length : Math.min(mediaFiles.length, postsToPublish.length);
+    
+    console.log('[DEBUG] 처리할 미디어-게시글 쌍:', totalPairs);
+    console.log('[DEBUG] 미디어 타입:', mediaType, '미디어 개수:', mediaFiles.length);
+    addLog(`[디버그] 총 ${totalPairs}개의 ${mediaType}-게시글 쌍을 처리합니다.`, 'info');
 
     // 6. 개별 게시 처리
     for (let i = 0; i < totalPairs; i++) {
-      const image = images[i];
-      const post = postsToPublish[i];
+      const media = mediaFiles[i];
+      const post = selectedLanguage === 'video-only' ? null : postsToPublish[i];
       
       console.log(`[DEBUG] ${i + 1}번째 아이템 처리 시작:`, {
-        imageName: image.file.name,
-        imageSize: image.file.size,
-        channelName: post.channelName,
-        contentLength: post.content.length
+        mediaName: media.file.name,
+        mediaSize: media.file.size,
+        mediaType: media.file.type,
+        channelName: post?.channelName || 'video-only',
+        contentLength: post?.content?.length || 0
       });
 
-      addLog(`[디버그] ${i + 1}/${totalPairs} - '${image.file.name}' 처리 시작`, 'info');
+      addLog(`[디버그] ${i + 1}/${totalPairs} - '${media.file.name}' 처리 시작`, 'info');
 
       try {
-        addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 트위터에 게시 중...`, 'generating');
+        if (selectedLanguage === 'video-only') {
+          addLog(`'${media.file.name}' 비디오를 트위터에 게시 중...`, 'generating');
+        } else {
+          addLog(`'${media.file.name}' ${mediaType}와 '${post.channelName}' ${languageType} 텍스트를 트위터에 게시 중...`, 'generating');
+        }
         
         // 실제 Twitter API 모드
         console.log('[DEBUG] 실제 Twitter API 호출 시작');
@@ -488,25 +555,39 @@ ex)
         
         try {
           console.log('[DEBUG] Python tweepy로 실제 트윗 게시');
-          console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
-          console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
+          console.log('[DEBUG] 게시할 텍스트:', post?.content?.substring(0, 50) || '(비디오 전용)' + '...');
+          console.log('[DEBUG] 미디어 파일:', media.file.name, media.file.size, media.file.type);
           
-          // Python tweepy 방식으로 이미지와 함께 트윗
-          const tweetResponse = await twitterService.publishWithImage(post.content, image.file);
-          console.log('[DEBUG] Python tweepy 응답:', tweetResponse);
+          let tweetResponse;
+          let tweetId;
           
-          const tweetId = tweetResponse?.data?.id || 'temp_id';
-          
-          addLog(`✅ Python tweepy로 트윗 게시 준비 완료!`, 'success');
-          addLog(`📋 콘솔에 출력된 Python 명령어를 터미널에서 실행하세요`, 'info');
-          addLog(`🖼️ 이미지가 자동으로 다운로드되었습니다`, 'info');
-          addLog(`게시할 내용: "${post.content.substring(0, 100)}..."`, 'info');
+          if (selectedLanguage === 'video-only') {
+            // 비디오만 업로드 (텍스트 없음)
+            tweetResponse = await twitterService.publishWithImage('--', media.file); // "--"로 비디오만 업로드
+            console.log('[DEBUG] video-only Python tweepy 응답:', tweetResponse);
+            tweetId = tweetResponse?.data?.id || 'temp_id';
+            
+            addLog(`✅ Python tweepy로 비디오 전용 트윗 게시 준비 완료!`, 'success');
+            addLog(`📋 콘솔에 출력된 Python 명령어를 터미널에서 실행하세요`, 'info');
+            addLog(`🎬 비디오가 자동으로 다운로드되었습니다`, 'info');
+            addLog(`게시할 내용: 비디오만 (텍스트 없음)`, 'info');
+          } else {
+            // 텍스트와 함께 업로드
+            tweetResponse = await twitterService.publishWithImage(post.content, media.file);
+            console.log('[DEBUG] Python tweepy 응답:', tweetResponse);
+            tweetId = tweetResponse?.data?.id || 'temp_id';
+            
+            addLog(`✅ Python tweepy로 트윗 게시 준비 완료!`, 'success');
+            addLog(`📋 콘솔에 출력된 Python 명령어를 터미널에서 실행하세요`, 'info');
+            addLog(`🖼️ ${mediaType}가 자동으로 다운로드되었습니다`, 'info');
+            addLog(`게시할 내용: "${post?.content?.substring(0, 100) || '비디오 전용'}..."`, 'info');
+          }
           
           // 배포된 게시물 정보 저장
           const deployedPost = {
             platform: 'twitter',
-            channelName: post.channelName,
-            content: post.content,
+            channelName: post?.channelName || 'video-only',
+            content: post?.content || '비디오만 업로드',
             link: `https://twitter.com/user/status/${tweetId}`,
             postId: tweetId
           };
@@ -529,7 +610,7 @@ ex)
         
       } catch (error) {
         console.error(`[DEBUG] ${i + 1}번째 아이템 처리 오류:`, error);
-        addLog(`'${image.file.name}' 트위터 게시 실패: ${error}`, 'error');
+        addLog(`'${media.file.name}' 트위터 게시 실패: ${error}`, 'error');
       }
     }
 
@@ -594,16 +675,16 @@ ex)
       const post = postsToPublish[i];
       
       console.log(`[DEBUG] ${i + 1}번째 아이템 처리 시작:`, {
-        imageName: image.file.name,
-        imageSize: image.file.size,
+        imageName: media.file.name,
+        imageSize: media.file.size,
         channelName: post.channelName,
         contentLength: post.content.length
       });
 
-      addLog(`[디버그] ${i + 1}/${totalPairs} - '${image.file.name}' 처리 시작`, 'info');
+      addLog(`[디버그] ${i + 1}/${totalPairs} - '${media.file.name}' 처리 시작`, 'info');
 
       try {
-        addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 Threads에 게시 중...`, 'generating');
+        addLog(`'${media.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 Threads에 게시 중...`, 'generating');
         
         // Threads API 시뮬레이션 (실제 API 구현 필요)
         console.log('[DEBUG] Threads API 시뮬레이션 시작');
@@ -612,7 +693,7 @@ ex)
         try {
           console.log('[DEBUG] Threads에 실제 게시 (시뮬레이션)');
           console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
-          console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
+          console.log('[DEBUG] 이미지 파일:', media.file.name, media.file.size, media.file.type);
           
           // Threads 게시 시뮬레이션
           await new Promise(res => setTimeout(res, 1000)); // 1초 딜레이
@@ -620,7 +701,7 @@ ex)
           
           addLog(`✅ Threads에 게시 완료!`, 'success');
           addLog(`🔗 Threads 게시물: https://www.threads.net/t/${threadsPostId}`, 'info');
-          addLog(`🖼️ 이미지: ${image.file.name}`, 'info');
+          addLog(`🖼️ 이미지: ${media.file.name}`, 'info');
           addLog(`게시 내용: "${post.content.substring(0, 100)}..."`, 'info');
           
           // 배포된 게시물 정보 저장
@@ -643,7 +724,7 @@ ex)
         
       } catch (error) {
         console.error(`[DEBUG] ${i + 1}번째 아이템 처리 오류:`, error);
-        addLog(`'${image.file.name}' Threads 게시 실패: ${error}`, 'error');
+        addLog(`'${media.file.name}' Threads 게시 실패: ${error}`, 'error');
       }
     }
 
@@ -812,7 +893,7 @@ ex)
           <div className="grid grid-cols-2 gap-3 mb-4 max-h-48 overflow-y-auto pr-2">
             {images.map(image => (
               <div key={image.id} className="relative group aspect-square">
-                <img src={image.dataUrl} alt={image.file.name} className="w-full h-full object-cover rounded-md" />
+                <img src={image.dataUrl} alt={media.file.name} className="w-full h-full object-cover rounded-md" />
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="flex space-x-2">
                     <button 
@@ -1373,19 +1454,97 @@ ex)
       )
     },
     {
+      id: 'video-upload',
+      title: '그냥 영상 올리기',
+      content: (
+        <div className="space-y-4">
+          <div className="bg-red-50 p-3 rounded-md">
+            <p className="text-sm text-red-700">
+              🎬 영상 파일을 선택하여 트위터에 직접 업로드합니다.<br/>
+              🎬 영어 번역이 있으면 영상+텍스트, 없으면 영상만 올라갑니다.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">영상 파일 선택</label>
+            <input
+              type="file"
+              ref={videoFileInputRef}
+              onChange={handleVideoUpload}
+              accept="video/*"
+              multiple
+              className="hidden"
+            />
+            <div className="space-y-3">
+              <button
+                onClick={() => videoFileInputRef.current?.click()}
+                className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors"
+              >
+                <div className="text-center">
+                  <div className="text-gray-600 text-sm">
+                    🎬 영상 파일을 선택하거나 드래그하세요
+                  </div>
+                  <div className="text-gray-500 text-xs mt-1">
+                    MP4, MOV, AVI 등 지원
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {videoFiles.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-gray-700">선택된 영상:</h4>
+              <div className="grid gap-3">
+                {videoFiles.map(video => (
+                  <div key={video.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-red-100 rounded flex items-center justify-center">
+                        <span className="text-red-600 text-lg">🎬</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{video.file.name}</p>
+                        <p className="text-xs text-gray-500">{(video.file.size / 1024 / 1024).toFixed(1)}MB</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteVideo(video.id)}
+                      className="p-1 text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {videoFiles.length > 0 && (
+            <div className="bg-yellow-50 p-3 rounded-md">
+              <p className="text-sm text-yellow-700">
+                💡 <strong>업로드 방식:</strong><br/>
+                • 영어 번역(6번 카드)이 있으면: 영상 + 영어 텍스트<br/>
+                • 영어 번역이 없으면: 영상만 업로드
+              </p>
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
       id: 'twitter-publish',
       title: '트위터 (X)에 배포',
       content: (
         <div className="space-y-4">
           <div className="bg-blue-50 p-3 rounded-md">
             <p className="text-sm text-blue-700">
-              🐦 2번 카드의 이미지와 함께 선택한 언어의 콘텐츠를 트위터에 발행합니다.<br/>
-              🐦 한국어 또는 영어 콘텐츠를 선택할 수 있습니다.
+              🐦 선택된 미디어와 함께 콘텐츠를 트위터에 발행합니다.<br/>
+              🐦 이미지+텍스트, 영상+텍스트, 또는 영상만 선택 가능합니다.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">발행할 콘텐츠 언어 선택</label>
+            <label className="block text-sm font-medium text-gray-700 mb-3">발행할 콘텐츠 선택</label>
             <div className="space-y-2">
               <label className="flex items-center">
                 <input
@@ -1393,11 +1552,11 @@ ex)
                   name="language"
                   value="korean"
                   checked={selectedLanguage === 'korean'}
-                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
                   className="mr-2"
                 />
-                <span className="text-sm">한국어 (5번 카드에서 생성된 콘텐츠)</span>
-                {generatedPosts.length > 0 && (
+                <span className="text-sm">📷 이미지 + 한국어 (5번 카드에서 생성된 콘텐츠)</span>
+                {generatedPosts.length > 0 && images.length > 0 && (
                   <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
                     ✅ 준비됨
                   </span>
@@ -1409,11 +1568,43 @@ ex)
                   name="language"
                   value="english"
                   checked={selectedLanguage === 'english'}
-                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
                   className="mr-2"
                 />
-                <span className="text-sm">영어 (6번 카드에서 번역된 콘텐츠)</span>
-                {translatedPosts.length > 0 && (
+                <span className="text-sm">📷 이미지 + 영어 (6번 카드에서 번역된 콘텐츠)</span>
+                {translatedPosts.length > 0 && images.length > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                    ✅ 준비됨
+                  </span>
+                )}
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="language"
+                  value="video-with-english"
+                  checked={selectedLanguage === 'video-with-english'}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
+                  className="mr-2"
+                />
+                <span className="text-sm">🎬 영상 + 영어 번역 (7번 카드 영상 + 6번 카드 번역)</span>
+                {translatedPosts.length > 0 && videoFiles.length > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                    ✅ 준비됨
+                  </span>
+                )}
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="language"
+                  value="video-only"
+                  checked={selectedLanguage === 'video-only'}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
+                  className="mr-2"
+                />
+                <span className="text-sm">🎬 영상만 (7번 카드 영상, 텍스트 없음)</span>
+                {videoFiles.length > 0 && (
                   <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
                     ✅ 준비됨
                   </span>
@@ -1445,21 +1636,62 @@ ex)
           })()}
 
           <div className="bg-gray-50 p-3 rounded border">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">선택된 이미지:</h4>
-            {images.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2">
-                {images.map((image, index) => (
-                  <div key={image.id} className="relative">
-                    <img src={image.dataUrl} alt="" className="w-full aspect-square object-cover rounded" />
-                    <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
-                      {index + 1}
+            <h4 className="text-sm font-medium text-gray-700 mb-2">선택된 미디어:</h4>
+            
+            {/* 선택된 옵션에 따른 미디어 표시 */}
+            {(() => {
+              // 이미지 옵션인 경우
+              if (selectedLanguage === 'korean' || selectedLanguage === 'english') {
+                if (images.length > 0) {
+                  return (
+                    <div className="mb-3">
+                      <p className="text-xs text-gray-600 mb-2">📷 이미지 ({images.length}개):</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {images.map((image, index) => (
+                          <div key={image.id} className="relative">
+                            <img src={image.dataUrl} alt="" className="w-full aspect-square object-cover rounded" />
+                            <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                              {index + 1}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-500">2번 카드에서 이미지를 선택해주세요.</p>
-            )}
+                  );
+                } else {
+                  return <p className="text-xs text-gray-500">2번 카드에서 이미지를 선택해주세요.</p>;
+                }
+              }
+              
+              // 영상 옵션인 경우
+              if (selectedLanguage === 'video-with-english' || selectedLanguage === 'video-only') {
+                if (videoFiles.length > 0) {
+                  return (
+                    <div className="mb-3">
+                      <p className="text-xs text-gray-600 mb-2">🎬 영상 ({videoFiles.length}개):</p>
+                      <div className="space-y-2">
+                        {videoFiles.map((video, index) => (
+                          <div key={video.id} className="flex items-center space-x-2 p-2 bg-white rounded border">
+                            <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                              <span className="text-red-600 text-sm">🎬</span>
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-gray-900">{video.file.name}</p>
+                              <p className="text-xs text-gray-500">{(video.file.size / 1024 / 1024).toFixed(1)}MB</p>
+                            </div>
+                            <div className="text-xs text-gray-400">#{index + 1}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return <p className="text-xs text-gray-500">7번 카드에서 영상을 선택해주세요.</p>;
+                }
+              }
+              
+              return null;
+            })()}
           </div>
 
           {twitterPublishCompleted && (
@@ -1475,11 +1707,25 @@ ex)
 
           <button
             onClick={handleTwitterPublish}
-            disabled={isPublishingToTwitter || images.length === 0 || 
-              (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)}
+            disabled={isPublishingToTwitter || (
+              selectedLanguage === 'video-only' ? 
+                videoFiles.length === 0 : 
+                selectedLanguage === 'video-with-english' ? 
+                  (videoFiles.length === 0 || translatedPosts.length === 0) :
+                  selectedLanguage === 'english' ? 
+                    (images.length === 0 || translatedPosts.length === 0) :
+                    (images.length === 0 || generatedPosts.length === 0)
+            )}
             className={`w-full px-4 py-3 font-semibold rounded-md transition-colors ${
-              isPublishingToTwitter || images.length === 0 || 
-              (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)
+              isPublishingToTwitter || (
+                selectedLanguage === 'video-only' ? 
+                  videoFiles.length === 0 : 
+                  selectedLanguage === 'video-with-english' ? 
+                    (videoFiles.length === 0 || translatedPosts.length === 0) :
+                    selectedLanguage === 'english' ? 
+                      (images.length === 0 || translatedPosts.length === 0) :
+                      (images.length === 0 || generatedPosts.length === 0)
+              )
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : twitterPublishCompleted 
                 ? 'bg-green-500 text-white hover:bg-green-600'
@@ -1500,10 +1746,10 @@ ex)
             </div>
           )}
 
-          {(images.length === 0 || 
+          {((images.length === 0 && videoFiles.length === 0) || 
             (selectedLanguage === 'english' ? translatedPosts.length === 0 : generatedPosts.length === 0)) && (
             <div className="text-center text-blue-500 text-sm bg-blue-50 p-3 rounded">
-              ⚠️ 이미지 선택 및 {selectedLanguage === 'english' ? '영어 번역' : '게시글 생성'}이 필요합니다.
+              ⚠️ 미디어 선택(이미지 또는 영상) 및 {selectedLanguage === 'english' ? '영어 번역' : '게시글 생성'}이 필요합니다.
             </div>
           )}
         </div>
@@ -1530,7 +1776,7 @@ ex)
                   name="threadsLanguage"
                   value="korean"
                   checked={selectedLanguage === 'korean'}
-                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
                   className="mr-2"
                 />
                 <span className="text-sm">한국어 (5번 카드에서 생성된 콘텐츠)</span>
@@ -1546,7 +1792,7 @@ ex)
                   name="threadsLanguage"
                   value="english"
                   checked={selectedLanguage === 'english'}
-                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english')}
+                  onChange={(e) => setSelectedLanguage(e.target.value as 'korean' | 'english' | 'video-with-english' | 'video-only')}
                   className="mr-2"
                 />
                 <span className="text-sm">영어 (6번 카드에서 번역된 콘텐츠)</span>

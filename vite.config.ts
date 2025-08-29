@@ -20,16 +20,16 @@ export default defineConfig(({ mode }) => {
         //   'Cross-Origin-Embedder-Policy': 'require-corp',
         //   'Cross-Origin-Opener-Policy': 'same-origin'
         // },
-        proxy: {
-          '/api/reddit': {
-            target: 'https://www.reddit.com',
-            changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/api\/reddit/, ''),
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (compatible; WebApp/1.0)'
-            }
-          }
-        }
+        // proxy: {
+        //   '/api/reddit': {
+        //     target: 'https://www.reddit.com',
+        //     changeOrigin: true,
+        //     rewrite: (path) => path.replace(/^\/api\/reddit/, ''),
+        //     headers: {
+        //       'User-Agent': 'Mozilla/5.0 (compatible; WebApp/1.0)'
+        //     }
+        //   }
+        // }
       }
     };
 });
