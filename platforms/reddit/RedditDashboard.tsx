@@ -92,6 +92,28 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
     setSubreddits(prev => prev.filter(sub => sub.id !== id));
   };
 
+  // Reddit OAuth 로그인
+  const handleRedditLogin = () => {
+    const clientId = getApiKey('clientId');
+    if (!clientId) {
+      alert('Client ID가 설정되지 않았습니다. 사이드바에서 설정해주세요.');
+      return;
+    }
+
+    const state = Math.random().toString(36).substring(2, 15);
+    sessionStorage.setItem('reddit_oauth_state', state);
+
+    const authUrl = `https://www.reddit.com/api/v1/authorize?` +
+      `client_id=${clientId}&` +
+      `response_type=code&` +
+      `state=${state}&` +
+      `redirect_uri=${encodeURIComponent('http://localhost:5175/login/callback')}&` +
+      `duration=permanent&` +
+      `scope=identity,submit,save`;
+
+    window.open(authUrl, '_self');
+  };
+
   // API 연결 테스트
   const handleTestConnection = () => {
     clearLogs();
@@ -688,6 +710,13 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
         <div className="space-y-4">
           <div className="space-y-4">
             <p className="text-gray-600">API 연결을 테스트하고 게시물을 가져옵니다.</p>
+            
+            <button 
+              onClick={handleRedditLogin}
+              className="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-md transition-colors"
+            >
+              🔐 Reddit으로 로그인
+            </button>
             
             <button 
               onClick={handleTestConnection}
