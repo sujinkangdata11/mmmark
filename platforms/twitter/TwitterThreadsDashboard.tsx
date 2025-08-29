@@ -563,7 +563,7 @@ ex)
           
           if (selectedLanguage === 'video-only') {
             // 비디오만 업로드 (텍스트 없음)
-            tweetResponse = await twitterService.publishWithImage('--', media.file); // "--"로 비디오만 업로드
+            tweetResponse = await twitterService.publishWithImage('https://autovid.work/', media.file); // AutoVid 링크로 비디오만 업로드
             console.log('[DEBUG] video-only Python tweepy 응답:', tweetResponse);
             tweetId = tweetResponse?.data?.id || 'temp_id';
             
