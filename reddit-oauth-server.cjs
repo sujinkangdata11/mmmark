@@ -111,6 +111,70 @@ app.get('/login_reddit', async (req, res) => {
   }
 });
 
+// Reddit 게시물 가져오기 엔드포인트
+app.get('/api/reddit/posts', async (req, res) => {
+  console.log('📝 [SERVER] Reddit 게시물 요청 받음');
+  
+  try {
+    const { subreddit, sort = 'new', limit = 10 } = req.query;
+    
+    console.log('📥 [SERVER] 요청 파라미터:', { subreddit, sort, limit });
+    
+    if (!subreddit) {
+      throw new Error('subreddit 파라미터가 필요합니다');
+    }
+    
+    // Reddit 공개 JSON API 호출
+    const cleanSubredditName = subreddit.replace(/^r\//, '');
+    const apiUrl = `https://www.reddit.com/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
+    
+    console.log(`🔍 [SERVER] Reddit API 호출: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'AIMarketingHub/1.0 (by /u/Plenty_Way_5213)',
+        'Accept': 'application/json',
+      }
+    });
+    
+    console.log(`📡 [SERVER] Reddit API 응답: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Reddit API 오류: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data?.data?.children) {
+      throw new Error('예상치 못한 API 응답 형식입니다.');
+    }
+    
+    const posts = data.data.children.map(child => ({
+      ...child.data,
+      url: child.data.url || `https://www.reddit.com${child.data.permalink}`,
+    }));
+    
+    console.log(`✅ [SERVER] ${posts.length}개 게시물 반환: r/${cleanSubredditName}`);
+    
+    res.json({
+      success: true,
+      posts: posts,
+      subreddit: cleanSubredditName,
+      sort: sort,
+      count: posts.length
+    });
+    
+  } catch (error) {
+    console.error('💥 [SERVER] Reddit 게시물 가져오기 실패:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 서버 상태 확인용
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Reddit OAuth Server is running' });

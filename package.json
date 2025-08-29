@@ -1,4 +1,19 @@
 {
+  "//////////////////////////////////////////": "////////////////////////////////////////",
+  "// 💡 개발 서버 실행 방법": "",
+  "// 🚀 매일 사용: npm run dev-all (React + Reddit 서버 동시 실행)": "",
+  "// 📝 개별 실행: npm run dev (React만), npm run reddit-server (Express만)": "",
+  "//": "",
+  "// ⚠️ 컴퓨터 재부팅 후 해야할 일:": "",
+  "// 1. cd /Users/sujin/Desktop/ai-marketing-automation-hub": "",
+  "// 2. npm run dev-all": "",
+  "// 3. 브라우저 localhost:5175 접속": "",
+  "//": "",
+  "// 🔧 문제 해결:": "",
+  "// - CORS 에러 → Express 서버(3003) 재시작 필요": "",
+  "// - 404 에러 → reddit-oauth-server.cjs 수정 후 서버 재시작": "",
+  "// - Reddit API → localhost:3003/api/reddit/posts 엔드포인트 사용": "",
+  "//////////////////////////////////////////": "////////////////////////////////////////",
   "name": "ai-marketing-automation-hub",
   "private": true,
   "version": "0.0.0",
@@ -6,7 +21,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "reddit-server": "node reddit-oauth-server.cjs",
+    "dev-all": "concurrently \"npm run dev\" \"npm run reddit-server\" --names \"React,Reddit\" --prefix-colors \"cyan,yellow\""
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
@@ -24,6 +41,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.11",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4.1.12",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"

@@ -75,94 +75,74 @@ const FocusTimer: React.FC<FocusTimerProps> = ({ onComplete }) => {
   const progress = ((300 - timeLeft) / 300) * 100;
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border border-blue-200">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-blue-900">
-          🎯 집중 타이머
-        </h3>
-        <div className="text-lg font-mono font-bold text-blue-800">
-          {formatTime(timeLeft)}
-        </div>
-      </div>
-
-      {/* 프로그레스 바 */}
-      <div className="w-full bg-blue-100 rounded-full h-3 mb-4 overflow-hidden">
-        <div
-          className={`h-full transition-all duration-1000 ease-linear ${
-            isCompleted 
-              ? 'bg-green-500' 
-              : isActive 
-                ? 'bg-gradient-to-r from-blue-500 to-cyan-500' 
-                : 'bg-gray-400'
-          }`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-
-      {/* 상태 메시지 */}
-      <div className="text-center mb-3">
-        {isCompleted ? (
-          <span className="text-green-600 text-sm font-medium">
-            ✅ 집중 시간 완료! 잘하셨습니다!
-          </span>
-        ) : isActive ? (
-          <span className="text-blue-600 text-sm font-medium">
-            🔥 집중하고 있습니다... 화이팅!
-          </span>
-        ) : (
-          <span className="text-gray-600 text-sm">
-            집중이 필요할 때 타이머를 시작해보세요
-          </span>
-        )}
-      </div>
-
-      {/* 컨트롤 버튼들 */}
-      <div className="flex gap-2 justify-center">
-        {!isActive && timeLeft === 300 ? (
-          <button
-            onClick={handleStart}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-          >
-            타이머 시작
-          </button>
-        ) : !isActive && timeLeft > 0 && !isCompleted ? (
-          <>
+    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 border border-blue-200">
+      {/* 버튼, 게이지바, 시간을 같은 줄로 */}
+      <div className="flex items-center gap-3">
+        {/* 컨트롤 버튼들 */}
+        <div className="flex gap-2 flex-shrink-0">
+          {!isActive && timeLeft === 300 ? (
             <button
               onClick={handleStart}
-              className="px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
             >
-              계속
+              타이머 시작
             </button>
+          ) : !isActive && timeLeft > 0 && !isCompleted ? (
+            <>
+              <button
+                onClick={handleStart}
+                className="px-2 py-1.5 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 transition-colors"
+              >
+                계속
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-2 py-1.5 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700 transition-colors"
+              >
+                리셋
+              </button>
+            </>
+          ) : isActive ? (
+            <>
+              <button
+                onClick={handlePause}
+                className="px-2 py-1.5 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 transition-colors"
+              >
+                일시정지
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-2 py-1.5 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700 transition-colors"
+              >
+                리셋
+              </button>
+            </>
+          ) : (
             <button
               onClick={handleReset}
-              className="px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
+              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
             >
-              리셋
+              다시 시작
             </button>
-          </>
-        ) : isActive ? (
-          <>
-            <button
-              onClick={handlePause}
-              className="px-3 py-2 bg-orange-600 text-white text-sm font-medium rounded-md hover:bg-orange-700 transition-colors"
-            >
-              일시정지
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
-            >
-              리셋
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-          >
-            다시 시작
-          </button>
-        )}
+          )}
+        </div>
+
+        {/* 진행률 바 */}
+        <div className="flex-1 mx-3">
+          <div className="w-full bg-blue-100 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* 시간 표시 (오른쪽) */}
+        <div className="text-right flex-shrink-0">
+          <div className="text-base font-mono font-bold text-blue-800">
+            {formatTime(timeLeft)}
+          </div>
+        </div>
       </div>
     </div>
   );

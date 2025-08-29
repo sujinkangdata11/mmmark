@@ -258,55 +258,50 @@ export class RedditService {
     }
   }
 
-  // Reddit 공개 API를 통해 실제 데이터 가져오기 (OAuth 없이)
+  // Express 서버를 통해 Reddit 게시물 가져오기
   async getSubredditPosts(subredditName: string, sort: 'hot' | 'new' = 'new', limit: number = 10): Promise<RedditPost[]> {
     try {
       const cleanSubredditName = subredditName.replace(/^r\//, '');
       
-      // Reddit 공개 JSON API 직접 사용
-      const apiUrl = `https://www.reddit.com/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
-      console.log(`🔍 Fetching Reddit public data: ${apiUrl}`);
+      // Express 서버 엔드포인트 호출
+      const serverUrl = `http://localhost:3003/api/reddit/posts?subreddit=${cleanSubredditName}&sort=${sort}&limit=${limit}`;
+      console.log(`🔍 Fetching Reddit data via server: ${serverUrl}`);
       
-      const response = await fetch(apiUrl, {
+      const response = await fetch(serverUrl, {
         method: 'GET',
         headers: {
-          'User-Agent': this.username !== 'anonymous' 
-            ? `WebApp/1.0 (by /u/${this.username})` 
-            : `WebApp/1.0 (by /u/${this.redditAccount})`,
           'Accept': 'application/json',
         }
       });
 
-      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+      console.log(`📡 Server response status: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`HTTP 에러! 상태: ${response.status} - ${errorText}`);
+        throw new Error(`서버 에러! 상태: ${response.status} - ${errorText}`);
       }
 
-      const data: RedditApiResponse = await response.json();
-      console.log('🔍 프록시 서버 응답 데이터:', data);
-      console.log('🔍 data.data 존재?', !!data?.data);
-      console.log('🔍 data.data.children 존재?', !!data?.data?.children);
+      const serverResponse = await response.json();
+      console.log('🔍 서버 응답 데이터:', serverResponse);
       
-      if (!data?.data?.children) {
-        console.log('❌ 응답 구조 확인:', JSON.stringify(data, null, 2));
-        throw new Error('예상치 못한 API 응답 형식입니다.');
+      if (!serverResponse.success) {
+        throw new Error(`서버 오류: ${serverResponse.error}`);
       }
 
-      const posts = data.data.children.map(child => ({
-        ...child.data,
-        url: child.data.url || `https://www.reddit.com${child.data.permalink}`,
-      }));
+      if (!serverResponse.posts || !Array.isArray(serverResponse.posts)) {
+        throw new Error('서버에서 유효하지 않은 게시물 데이터를 받았습니다.');
+      }
 
-      console.log(`✅ Successfully fetched ${posts.length} real Reddit posts from r/${cleanSubredditName}`);
+      const posts = serverResponse.posts;
+
+      console.log(`✅ Successfully fetched ${posts.length} Reddit posts from r/${cleanSubredditName} via server`);
       posts.forEach((post, index) => {
         console.log(`${index + 1}. ${post.title} by ${post.author} (${post.score} points)`);
       });
       
       return posts;
     } catch (error) {
-      console.error('❌ Error fetching Reddit posts:', error);
+      console.error('❌ Error fetching Reddit posts via server:', error);
       if (error instanceof Error) {
         throw new Error(`게시글을 가져오는 데 실패했습니다: ${error.message}`);
       }
