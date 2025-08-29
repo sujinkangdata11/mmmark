@@ -5,16 +5,16 @@ import { useApiKeys } from '../hooks';
 const Sidebar: React.FC = () => {
   const { getApiKey, setApiKey, resetApiKey } = useApiKeys(['gemini', 'username', 'clientId', 'clientSecret', 'redditAccount', 'redditPassword', 'twitter', 'threads', 'youtube', 'discordWebhook', 'googleDriveClientId', 'googleDriveClientSecret']);
   
-  // 각 섹션의 펼침/접힘 상태 (기본값: 모두 펼쳐짐)
+  // 각 섹션의 펼침/접힘 상태 (기본값: 모두 접혀짐)
   const [expandedSections, setExpandedSections] = useState({
-    gemini: true,
-    reddit: true,
-    youtube: true,
-    googleDrive: true,
-    twitter1: true,
-    twitter2: true,
-    social: true,
-    discord: true
+    gemini: false,
+    reddit: false,
+    youtube: false,
+    googleDrive: false,
+    twitter1: false,
+    twitter2: false,
+    social: false,
+    discord: false
   });
   
   const toggleSection = (section: keyof typeof expandedSections) => {
