@@ -1,0 +1,27 @@
+✅ 정확한 방법:
+
+터미널 1
+cd /Users/sujin/Desktop/ai-marketing-automation-hub
+npm run dev-all
+↳ React + Reddit 서버 동시 실행 (계속 켜둠)
+
+터미널 2 (새로 열기)
+cd /Users/sujin/Desktop/ai-marketing-automation-hub
+python3 platforms/twitter/tweet_server_new.py
+↳ 트위터 Python 서버 실행 (계속 켜둠)
+
+---
+🖥️ 결과:
+
+- 터미널 1: npm run dev-all 로그 (React 파란색 + Reddit 노란색)
+- 터미널 2: Python Flask 서버 로그
+
+📝 총 3개 서버 실행:
+
+1. React (포트 5175) ← 터미널 1
+2. Reddit Express (포트 3003) ← 터미널 1
+3. Twitter Flask (포트 ???) ← 터미널 2
+
+네, 터미널 2개 열어서 각각 명령어 치는 게 맞습니다! 🎯
+
+이렇게 하면 모든 서버가 동시에 돌아가면서 전체 기능이 작동합니다! 🚀
