@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { AutomationConfig, UploadedImage } from '../../types';
 import { generateText } from '../../shared/services/geminiService';
 import { googleDriveService, GoogleDriveImage, GoogleDriveFolder } from '../../shared/services/googleDriveService';
@@ -28,8 +28,16 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const [showFolderSelect, setShowFolderSelect] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImage, setModalImage] = useState<UploadedImage | null>(null);
+  
+  // 9번 카드용 상태 변수들
+  const [showMoveTargetFolders, setShowMoveTargetFolders] = useState(false);
+  const [selectedMoveTargetFolder, setSelectedMoveTargetFolder] = useState<GoogleDriveFolder | null>(null);
+  const [isMovingImages, setIsMovingImages] = useState(false);
+  const [moveCompleted, setMoveCompleted] = useState(false);
+  const [lastMoveResult, setLastMoveResult] = useState<{movedCount: number, folderName: string} | null>(null);
   const [extractedChannels, setExtractedChannels] = useState<{imageId: string, channelName: string}[]>([]);
   const [isExtractingChannels, setIsExtractingChannels] = useState(false);
+  const [editableHandleText, setEditableHandleText] = useState('');
   const [channelInfos, setChannelInfos] = useState<YouTubeChannelInfo[]>([]);
   const [isExtractingChannelInfo, setIsExtractingChannelInfo] = useState(false);
   const [generatedPosts, setGeneratedPosts] = useState<{channelName: string, content: string, originalContent: string}[]>([]);
@@ -37,6 +45,90 @@ const TwitterThreadsDashboard: React.FC<TwitterThreadsDashboardProps> = ({ confi
   const [translatedPosts, setTranslatedPosts] = useState<{channelName: string, content: string, originalContent: string}[]>([]);
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationPrompt, setTranslationPrompt] = useState('이 내용을 영어로 번역하세요');
+  
+  // 즐겨찾는 프롬프트 관리
+  const [showFavoritePrompts, setShowFavoritePrompts] = useState(false);
+  
+  const favoritePrompts = [
+    {
+      id: 'revenue-analysis',
+      name: '수익 분석 프롬프트 (기본)',
+      content: `주어진 정보를 가지고 아래 [빈칸]을 채워서 예시처럼 만드세요.
+-----------------------------
+🚨 이 채널은 개설 [기간] 만에 '광고 + 쇼핑제휴' 으로  [$총합]를 만들었을 가능성이 큽니다!
+
+업로드 [업로드수]개 📌
+💵 광고 수익(쇼츠 RPM $0.3 가정): ~$[광고수익]
+🛒 쇼핑제휴 수익(1만 뷰당 20건 · 평균가 $30 · 커미션 6%): ~$[제휴수익]
+= 총 수익: ~$[총합]
+--------------------------------
+[] 빈칸을 정확하게 수학적 계산을 통해 아래같은 예시를 만드세요. ()괄호부분은 결과에 넣지마세요.
+---------------------------------
+
+ex)결과 예시
+
+🚨 이 채널은 개설 15일 만에 '광고 + 쇼핑제휴' 합산으로 $13,038를 만들었을 가능성이 큽니다!
+
+업로드 31개 📌
+💵 광고 수익: ~ $1,095
+🛒 쇼핑제휴 수익: ~ $11,944
+= 총 수익: ~$13,038
+
+"1000"라고 댓글 다세요.(방법 알려줌) 🚨`
+    },
+    {
+      id: 'growth-analysis',
+      name: '성장 분석 프롬프트',
+      content: `주어진 채널 정보를 분석하여 성장률과 전략을 분석해주세요:
+
+📈 [채널명] 성장 분석 리포트
+
+개설일: [개설일]
+총 영상: [영상수]개
+총 조회수: [총조회수]
+구독자: [구독자수]
+
+🚀 성장률 분석:
+- 일평균 조회수: [일평균조회수]
+- 영상당 평균 조회수: [영상평균조회수]
+- 구독자 전환율: [전환율]%
+
+💡 성장 전략:
+[구체적인 성장 전략 3가지]
+
+이 채널의 비밀을 알고 싶다면 "GROW"라고 댓글 달아주세요! 📊`
+    },
+    {
+      id: 'trend-analysis',
+      name: '트렌드 분석 프롬프트',  
+      content: `채널의 최신 트렌드와 콘텐츠 전략을 분석해주세요:
+
+🔥 [채널명] 트렌드 분석
+
+최근 인기 영상 분석:
+1. [제목1] - [조회수1]
+2. [제목2] - [조회수2] 
+3. [제목3] - [조회수3]
+
+📊 콘텐츠 패턴:
+- 주요 키워드: [키워드들]
+- 업로드 빈도: [빈도]
+- 최적 길이: [영상길이]
+
+🎯 트렌드 포인트:
+[트렌드 분석 3가지]
+
+이 트렌드를 활용하고 싶다면 "TREND"라고 댓글 남겨주세요! 🚀`
+    }
+  ];
+
+  // 기본 프롬프트 설정
+  useEffect(() => {
+    if (getPrompt('feed02-twitter-post') && !getPrompt('feed02-twitter-post')!.template.trim()) {
+      updatePrompt('feed02-twitter-post', favoritePrompts[0].content);
+    }
+  }, [getPrompt, updatePrompt]);
+
   const [selectedLanguage, setSelectedLanguage] = useState<'korean' | 'english' | 'video-with-english' | 'video-only'>('korean');
   const [isPublishingToTwitter, setIsPublishingToTwitter] = useState(false);
   const [isPublishingToThreads, setIsPublishingToThreads] = useState(false);
@@ -174,13 +266,96 @@ ex)
           id: `drive-${driveImage.id}-${new Date().getTime()}`,
           file: file,
           dataUrl: e.target?.result as string,
+          driveId: driveImage.id, // Google Drive 파일 ID 저장
         };
         setImages(prev => [...prev, newImage]);
         addLog(`'${driveImage.name}' 이미지가 추가되었습니다.`, 'success');
+        
+        // 새 이미지 추가시 이동 완료 상태 초기화
+        setMoveCompleted(false);
+        setLastMoveResult(null);
       };
       reader.readAsDataURL(file);
     } catch (error) {
       addLog(`이미지 다운로드 오류: ${error}`, 'error');
+    }
+  };
+
+  // 9번 카드: 이미지 이동 관련 함수들
+  const handleMoveTargetFolderSelect = (folder: GoogleDriveFolder | null) => {
+    setSelectedMoveTargetFolder(folder);
+    setShowMoveTargetFolders(false);
+  };
+
+  const handleMoveImagesToFolder = async () => {
+    if (!selectedMoveTargetFolder) {
+      addLog('이동할 대상 폴더를 선택해주세요.', 'error');
+      return;
+    }
+
+    if (images.length === 0) {
+      addLog('이동할 이미지가 없습니다. 먼저 2번 카드에서 이미지를 선택해주세요.', 'error');
+      return;
+    }
+
+    setIsMovingImages(true);
+    addLog(`${images.length}개의 이미지를 '${selectedMoveTargetFolder.name}' 폴더로 이동 중...`, 'generating');
+
+    try {
+      // 실제 구글 드라이브 API 이동 로직
+      let movedCount = 0;
+      let skippedCount = 0;
+      
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        
+        // Google Drive에서 가져온 이미지만 이동 가능
+        if (!image.driveId) {
+          addLog(`${i + 1}/${images.length}: '${image.file.name}' - 로컬 파일이므로 이동할 수 없습니다`, 'error');
+          skippedCount++;
+          continue;
+        }
+        
+        try {
+          addLog(`${i + 1}/${images.length}: '${image.file.name}' 이동 중...`, 'generating');
+          
+          // 실제 Google Drive API 호출
+          await googleDriveService.moveImageToFolder(
+            image.driveId,
+            selectedMoveTargetFolder.id
+          );
+          
+          addLog(`${i + 1}/${images.length}: '${image.file.name}' 이동 완료`, 'success');
+          movedCount++;
+          
+        } catch (imageError) {
+          addLog(`${i + 1}/${images.length}: '${image.file.name}' 이동 실패 - ${imageError}`, 'error');
+          skippedCount++;
+        }
+      }
+      
+      // 결과 요약
+      addLog(`이동 작업 완료: 성공 ${movedCount}개, 실패/건너뜀 ${skippedCount}개`, movedCount > 0 ? 'success' : 'error');
+      
+      if (movedCount > 0) {
+        addLog(`${movedCount}개의 이미지가 '${selectedMoveTargetFolder.name}' 폴더로 성공적으로 이동되었습니다.`, 'success');
+        
+        // 성공적으로 이동된 이미지들만 목록에서 제거
+        const remainingImages = images.filter(image => !image.driveId);
+        setImages(remainingImages);
+        
+        // 이동 완료 상태 설정
+        setMoveCompleted(true);
+        setLastMoveResult({
+          movedCount: movedCount,
+          folderName: selectedMoveTargetFolder.name
+        });
+      }
+      
+    } catch (error) {
+      addLog(`이미지 이동 중 오류가 발생했습니다: ${error}`, 'error');
+    } finally {
+      setIsMovingImages(false);
     }
   };
 
@@ -227,13 +402,14 @@ ex)
     console.log('[DEBUG] for 루프 시작 전, images:', images);
     console.log('[DEBUG] isRunning():', isRunning());
 
+    ///// 여긴 이미지에서 채널명 추출하는 함수이므로 image 변수가 맞음 /////
     for (const image of images) {
-      console.log('[DEBUG] for 루프 안에 들어옴, image:', media.file.name);
+      console.log('[DEBUG] for 루프 안에 들어옴, image:', image.file.name);
       // 채널명 추출은 독립적인 기능이므로 isRunning() 체크 제거
       // if (!isRunning()) break;
       
       try {
-        addLog(`'${media.file.name}'에서 채널명 추출 중...`, 'generating');
+        addLog(`'${image.file.name}'에서 채널명 추출 중...`, 'generating');
         addLog(`프롬프트: ${channelExtractionPrompt.substring(0, 50)}...`, 'info');
         addLog(`이미지 데이터: ${image.dataUrl ? 'OK' : 'NONE'}`, 'info');
         
@@ -251,9 +427,9 @@ ex)
           channelName: formattedChannelName
         });
         
-        addLog(`'${media.file.name}': ${formattedChannelName}`, 'success');
+        addLog(`'${image.file.name}': ${formattedChannelName}`, 'success');
       } catch (error) {
-        addLog(`'${media.file.name}' 채널명 추출 실패: ${error}`, 'error');
+        addLog(`'${image.file.name}' 채널명 추출 실패: ${error}`, 'error');
         results.push({
           imageId: image.id,
           channelName: '추출 실패'
@@ -262,6 +438,8 @@ ex)
     }
 
     setExtractedChannels(results);
+    const handleText = results.map(result => result.channelName).join('\n');
+    setEditableHandleText(handleText);
     setIsExtractingChannels(false);
     
     addLog('모든 이미지의 채널명 추출이 완료되었습니다.', 'info');
@@ -367,7 +545,7 @@ ex)
 - 합산 총 수익: $${totalRevenue.toLocaleString()}
         `;
         
-        const basePrompt = getPrompt('twitter-post')?.template || '';
+        const basePrompt = getPrompt('feed02-twitter-post')?.template || '';
         const finalPrompt = `${channelData}\n\n${basePrompt}`;
 
         const generatedPost = await generateText(finalPrompt, undefined, geminiKey);
@@ -528,6 +706,7 @@ ex)
     addLog(`[디버그] 총 ${totalPairs}개의 ${mediaType}-게시글 쌍을 처리합니다.`, 'info');
 
     // 6. 개별 게시 처리
+    ///// 여긴 비디오/이미지 모두 포함하는 함수이므로 media 변수 사용. 함부로 image로 바꾸지 말것 /////
     for (let i = 0; i < totalPairs; i++) {
       const media = mediaFiles[i];
       const post = selectedLanguage === 'video-only' ? null : postsToPublish[i];
@@ -670,21 +849,22 @@ ex)
     addLog(`[디버그] 총 ${totalPairs}개의 이미지-게시글 쌍을 처리합니다.`, 'info');
 
     // 5. 개별 게시 처리 (시뮬레이션)
+    ///// 여긴 Threads 함수이므로 이미지만 사용. image 변수가 맞음 /////
     for (let i = 0; i < totalPairs; i++) {
       const image = images[i];
       const post = postsToPublish[i];
       
       console.log(`[DEBUG] ${i + 1}번째 아이템 처리 시작:`, {
-        imageName: media.file.name,
-        imageSize: media.file.size,
+        imageName: image.file.name,
+        imageSize: image.file.size,
         channelName: post.channelName,
         contentLength: post.content.length
       });
 
-      addLog(`[디버그] ${i + 1}/${totalPairs} - '${media.file.name}' 처리 시작`, 'info');
+      addLog(`[디버그] ${i + 1}/${totalPairs} - '${image.file.name}' 처리 시작`, 'info');
 
       try {
-        addLog(`'${media.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 Threads에 게시 중...`, 'generating');
+        addLog(`'${image.file.name}' 이미지와 '${post.channelName}' ${languageType} 텍스트를 Threads에 게시 중...`, 'generating');
         
         // Threads API 시뮬레이션 (실제 API 구현 필요)
         console.log('[DEBUG] Threads API 시뮬레이션 시작');
@@ -693,7 +873,7 @@ ex)
         try {
           console.log('[DEBUG] Threads에 실제 게시 (시뮬레이션)');
           console.log('[DEBUG] 게시할 텍스트:', post.content.substring(0, 50) + '...');
-          console.log('[DEBUG] 이미지 파일:', media.file.name, media.file.size, media.file.type);
+          console.log('[DEBUG] 이미지 파일:', image.file.name, image.file.size, image.file.type);
           
           // Threads 게시 시뮬레이션
           await new Promise(res => setTimeout(res, 1000)); // 1초 딜레이
@@ -701,7 +881,7 @@ ex)
           
           addLog(`✅ Threads에 게시 완료!`, 'success');
           addLog(`🔗 Threads 게시물: https://www.threads.net/t/${threadsPostId}`, 'info');
-          addLog(`🖼️ 이미지: ${media.file.name}`, 'info');
+          addLog(`🖼️ 이미지: ${image.file.name}`, 'info');
           addLog(`게시 내용: "${post.content.substring(0, 100)}..."`, 'info');
           
           // 배포된 게시물 정보 저장
@@ -724,7 +904,7 @@ ex)
         
       } catch (error) {
         console.error(`[DEBUG] ${i + 1}번째 아이템 처리 오류:`, error);
-        addLog(`'${media.file.name}' Threads 게시 실패: ${error}`, 'error');
+        addLog(`'${image.file.name}' Threads 게시 실패: ${error}`, 'error');
       }
     }
 
@@ -893,7 +1073,7 @@ ex)
           <div className="grid grid-cols-2 gap-3 mb-4 max-h-48 overflow-y-auto pr-2">
             {images.map(image => (
               <div key={image.id} className="relative group aspect-square">
-                <img src={image.dataUrl} alt={media.file.name} className="w-full h-full object-cover rounded-md" />
+                <img src={image.dataUrl} alt={image.file.name} className="w-full h-full object-cover rounded-md" />
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="flex space-x-2">
                     <button 
@@ -1031,29 +1211,15 @@ ex)
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">YouTube 핸들 추출 프롬프트</label>
+          {getPrompt('feed02-twitter-channel-extraction') && (
             <PromptEditor
-              prompt={{
-                id: 'channel-extraction',
-                name: 'YouTube 핸들 추출',
-                description: '이미지에서 YouTube 핸들을 추출하는 프롬프트',
-                template: channelExtractionPrompt,
-                variables: []
-              }}
-              value={channelExtractionPrompt}
-              onChange={(value) => setChannelExtractionPrompt(value)}
-              onReset={() => setChannelExtractionPrompt(
-                `이 이미지를 분석하고 "YouTube 핸들"을 추출해주세요. 
-답변은 "핸들"만 간단히 해주세요.
-## "핸들"은 @ 다음에 나오는 것이 핸들입니다. 
-##유튜브 채널명하고 햇갈리지마세요.
-
-ex)
-@슈카월드`
-              )}
+              prompt={getPrompt('feed02-twitter-channel-extraction')!}
+              value={getPrompt('feed02-twitter-channel-extraction')!.template}
+              onChange={(value) => updatePrompt('feed02-twitter-channel-extraction', value)}
+              onReset={() => resetPrompt('feed02-twitter-channel-extraction')}
+              feedType="twitter"
             />
-          </div>
+          )}
           
           <button
             onClick={handleExtractChannels}
@@ -1079,7 +1245,7 @@ ex)
           )}
           
           {extractedChannels.length > 0 && (
-            <div className="max-h-64 overflow-y-auto space-y-4">
+            <div className="space-y-4">
               <div>
                 <h4 className="text-sm font-medium text-gray-700 mb-2">추출된 핸들:</h4>
                 <div className="space-y-2">
@@ -1104,18 +1270,30 @@ ex)
               
               {/* 텍스트만 별도 출력 */}
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">핸들 텍스트만:</h4>
-                <div className="p-3 bg-blue-50 rounded border">
-                  <div className="text-sm text-gray-800 font-mono leading-relaxed">
-                    {extractedChannels.map(result => result.channelName).join('\n')}
+                <h4 className="text-sm font-medium text-gray-700 mb-2">핸들 텍스트 (편집 가능):</h4>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <textarea
+                      value={editableHandleText}
+                      onChange={(e) => setEditableHandleText(e.target.value)}
+                      className="w-full p-3 rounded border text-sm font-mono resize-y min-h-20 bg-white border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                      placeholder="추출된 핸들이 여기에 표시됩니다..."
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-400 bg-white px-1 rounded">
+                      {editableHandleText.length} 글자
+                    </div>
                   </div>
                   <button
                     onClick={() => {
-                      const textToCopy = extractedChannels.map(result => result.channelName).join('\n');
-                      navigator.clipboard.writeText(textToCopy);
+                      navigator.clipboard.writeText(editableHandleText);
                       addLog('핸들 텍스트가 클립보드에 복사되었습니다.', 'success');
                     }}
-                    className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                    disabled={!editableHandleText.trim()}
+                    className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                      editableHandleText.trim()
+                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
                     📋 복사하기
                   </button>
@@ -1137,6 +1315,16 @@ ex)
               📊 채널 생성일자, 구독자수, 총 조회수, 영상갯수, 최고 조회수를 확인할 수 있습니다.
             </p>
           </div>
+
+          {getPrompt('feed02-twitter-channel-info') && (
+            <PromptEditor
+              prompt={getPrompt('feed02-twitter-channel-info')!}
+              value={getPrompt('feed02-twitter-channel-info')!.template}
+              onChange={(value) => updatePrompt('feed02-twitter-channel-info', value)}
+              onReset={() => resetPrompt('feed02-twitter-channel-info')}
+              feedType="twitter"
+            />
+          )}
 
           <button
             onClick={handleExtractChannelInfo}
@@ -1226,15 +1414,45 @@ ex)
       title: 'Twitter & Threads 프롬프트',
       content: (
         <div className="space-y-4">
-          {getPrompt('twitter-post') && (
+          {getPrompt('feed02-twitter-post') && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Twitter & Threads 포스트 프롬프트</label>
+                
+                {/* 즐겨찾는 프롬프트 드롭다운 */}
+                <div className="mb-3 relative">
+                  <button
+                    onClick={() => setShowFavoritePrompts(!showFavoritePrompts)}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 text-sm rounded border hover:bg-gray-200 transition-colors flex items-center space-x-2"
+                  >
+                    <span>📋 즐겨찾는 프롬프트</span>
+                    <span className={`transform transition-transform ${showFavoritePrompts ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+                  
+                  {showFavoritePrompts && (
+                    <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                      {favoritePrompts.map((prompt) => (
+                        <button
+                          key={prompt.id}
+                          onClick={() => {
+                            updatePrompt('feed02-twitter-post', prompt.content);
+                            setShowFavoritePrompts(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                        >
+                          {prompt.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
                 <PromptEditor
-                  prompt={getPrompt('twitter-post')!}
-                  value={getPrompt('twitter-post')!.template}
-                  onChange={(value) => updatePrompt('twitter-post', value)}
-                  onReset={() => resetPrompt('twitter-post')}
+                  prompt={getPrompt('feed02-twitter-post')!}
+                  value={getPrompt('feed02-twitter-post')!.template}
+                  onChange={(value) => updatePrompt('feed02-twitter-post', value)}
+                  onReset={() => resetPrompt('feed02-twitter-post')}
+                  feedType="twitter"
                 />
                 <p className="text-xs text-gray-500 mt-2">
                   이 프롬프트는 Twitter와 Threads에 동일하게 적용됩니다.
@@ -1756,6 +1974,137 @@ ex)
       )
     },
     {
+      id: 'google-drive-move',
+      title: '구글 드라이브에서 완료 이미지 이동하기',
+      content: (
+        <div className="space-y-4">
+          <div className="bg-green-50 p-3 rounded-md">
+            <p className="text-sm text-green-700">
+              📁 2번 카드에서 선택한 이미지들을 구글 드라이브의 지정된 폴더로 이동합니다.<br/>
+              📁 업로드 완료된 이미지들을 정리하여 드라이브를 깔끔하게 유지합니다.
+            </p>
+          </div>
+
+          {/* 2번 카드와 동일한 이미지 표시 */}
+          <div className="bg-gray-50 p-3 rounded border">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-sm font-medium text-gray-700">이동할 이미지들 ({images.length}개)</h4>
+            </div>
+            {images.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto">
+                {images.map(image => (
+                  <div key={image.id} className="relative">
+                    <img 
+                      src={image.dataUrl} 
+                      alt={image.file.name} 
+                      className="w-full aspect-square object-cover rounded border" 
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">
+                      {image.file.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-4">
+                2번 카드에서 이미지를 선택해주세요.
+              </p>
+            )}
+          </div>
+
+          {/* 이동 대상 폴더 선택 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">이동할 대상 폴더 선택</label>
+            <button
+              onClick={() => setShowMoveTargetFolders(true)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-left flex items-center justify-between"
+            >
+              <span className="text-sm">
+                {selectedMoveTargetFolder ? `📁 ${selectedMoveTargetFolder.name}` : '📁 폴더를 선택하세요'}
+              </span>
+              <span className="text-gray-400">▼</span>
+            </button>
+            
+            {showMoveTargetFolders && (
+              <div className="mt-2 border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto bg-white shadow-lg">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm font-medium text-gray-700">폴더 선택</span>
+                  <button 
+                    onClick={() => setShowMoveTargetFolders(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleMoveTargetFolderSelect(null)}
+                    className={`w-full text-left px-3 py-2 rounded border hover:bg-gray-50 flex items-center ${!selectedMoveTargetFolder ? 'bg-blue-50 border-blue-300' : ''}`}
+                  >
+                    📂 루트 폴더
+                  </button>
+                  {driveFolders.map((folder) => (
+                    <button
+                      key={folder.id}
+                      onClick={() => handleMoveTargetFolderSelect(folder)}
+                      className={`w-full text-left px-3 py-2 rounded border hover:bg-gray-50 flex items-center ${selectedMoveTargetFolder?.id === folder.id ? 'bg-blue-50 border-blue-300' : ''}`}
+                    >
+                      📁 {folder.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 이동 실행 버튼 */}
+          <button
+            onClick={handleMoveImagesToFolder}
+            disabled={isMovingImages || images.length === 0 || !selectedMoveTargetFolder}
+            className={`w-full px-4 py-3 font-semibold rounded-md transition-colors ${
+              isMovingImages || images.length === 0 || !selectedMoveTargetFolder
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-500 text-white hover:bg-green-600'
+            }`}
+          >
+            {isMovingImages 
+              ? '📁 이미지 이동 중...' 
+              : `🚀 ${images.length}개 이미지를 ${selectedMoveTargetFolder?.name || '선택된 폴더'}로 이동하기`
+            }
+          </button>
+          
+          {isMovingImages && (
+            <div className="text-center">
+              <div className="text-sm text-gray-600 mb-2">
+                📁 선택된 이미지들을 구글 드라이브에서 이동하고 있습니다...
+              </div>
+              <div className="text-xs text-gray-500">
+                상세한 진행상황은 1번 카드 로그에서 확인하세요
+              </div>
+            </div>
+          )}
+
+          {moveCompleted && lastMoveResult && (
+            <div className="text-center text-green-800 text-sm bg-green-100 p-3 rounded mb-3">
+              ✅ {lastMoveResult.movedCount}개 이미지가 '{lastMoveResult.folderName}' 폴더로 이동되었습니다.
+            </div>
+          )}
+
+          {images.length === 0 && !moveCompleted && (
+            <div className="text-center text-green-500 text-sm bg-green-50 p-3 rounded">
+              ⚠️ 먼저 2번 카드에서 구글 드라이브 이미지를 선택해주세요.
+            </div>
+          )}
+
+          {images.length === 0 && moveCompleted && (
+            <div className="text-center text-green-800 text-sm bg-green-100 p-3 rounded">
+              ✅ 이동이 완료되었습니다. 새로운 이미지를 선택해주세요.
+            </div>
+          )}
+        </div>
+      )
+    },
+    {
       id: 'threads-publish',
       title: '쓰레드(Thread)에 배포',
       content: (
@@ -1900,7 +2249,7 @@ ex)
         <div className="space-y-4">
           {deployedPosts.length === 0 ? (
             <div className="text-center text-gray-500 bg-gray-50 p-4 rounded-md">
-              먼저 6번/7번 카드에서 게시물을 배포해주세요.
+              먼저 8번/10번 카드에서 게시물을 배포해주세요.
             </div>
           ) : (
             <div className="space-y-4">
@@ -1965,7 +2314,7 @@ ex)
         <div className="overflow-x-auto pb-6 bg-white">
           <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
             {steps.map((step, index) => (
-              <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow min-h-[650px]">
+              <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow min-h-[650px]" style={{height: 'auto'}}>
                 <div className="flex items-center mb-4">
                   <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
                     {index + 1}
