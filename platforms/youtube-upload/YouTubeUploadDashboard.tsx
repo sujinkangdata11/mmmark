@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { AutomationConfig, UploadedImage } from '../../types';
-import { useLogger } from '../../shared/hooks';
+import { useLogger, useApiKeys } from '../../shared/hooks';
 import LogDisplay from '../../shared/components/common/LogDisplay';
 
 interface YouTubeUploadDashboardProps {
@@ -37,6 +37,7 @@ const YouTubeUploadDashboard: React.FC<YouTubeUploadDashboardProps> = ({
 
 AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠 서비스 입니다. 어필리에이트에 강력한 장점을 갖고있어, 영상을 자체적으로 만들고 연관된 아마존 상품을 링크로 소개해줍니다. 또한 현재 바이럴되는 쇼츠들을 토대로 쇼핑쇼츠를 제작하여 조회수도 보장됩니다. 만약 유튜브로 수익화를 원하는 분이나, 온라인으로 홍보하고싶은 자영업자가 있다면 AutoVid를 추천해주세요. 특히 쇼츠로 부수입,돈을 벌고싶거나 매일 자동 생성된다는 성실함이 필요한분들에게 추천해주세요.`);
   const { logs, addLog, clearLogs } = useLogger();
+  const { getApiKey } = useApiKeys();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const youtubeFileInputRef = useRef<HTMLInputElement>(null);
@@ -352,21 +353,90 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
       return;
     }
 
+    const googleClientId = getApiKey('googleDriveClientId');
+    
+    if (!googleClientId) {
+      addLog('Google Client ID가 설정되지 않았습니다. 사이드바에서 설정해주세요.', 'error');
+      return;
+    }
+
+    console.log('✅ [DEBUG] 유효성 검사 통과 - YouTube 업로드 시작');
     setIsUploadingToYoutube(true);
-    addLog('YouTube에 영상을 업로드하기 시작합니다...', 'info');
-    addLog(`파일명: ${youtubeVideo.file.name}`, 'info');
-    addLog(`파일 크기: ${(youtubeVideo.file.size / 1024 / 1024).toFixed(1)}MB`, 'info');
     
     try {
-      // YouTube 업로드 시뮬레이션
+      addLog(`"${youtubeVideo.file.name}" 영상을 YouTube에 업로드하는 중...`, 'info');
+      addLog(`파일 크기: ${(youtubeVideo.file.size / 1024 / 1024).toFixed(1)}MB`, 'info');
+      
+      // Google Drive Service와 동일한 방식 사용 (Implicit Flow)
+      console.log('🔐 [DEBUG] Google OAuth 2.0 인증 시작 (Implicit Flow)');
+      addLog('Google 계정 인증을 시작합니다...', 'info');
+
+      // Google OAuth2 인증 URL 생성 (YouTube 댓글달기와 동일한 방식)
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(googleClientId)}&` +
+        `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
+        `response_type=token&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/youtube.upload')}&` +
+        `access_type=online&` +
+        `prompt=consent`;
+
+      console.log('🌐 [DEBUG] 인증 URL 생성:', authUrl);
+      console.log('🔑 [DEBUG] redirect_uri:', window.location.origin);
+
+      // 새 창에서 인증 진행
+      console.log('🪟 [DEBUG] 인증 창 열기...');
+      addLog('Google 로그인 창을 열고 있습니다. YouTube에 업로드할 계정을 선택해주세요.', 'info');
+      const authWindow = window.open(authUrl, 'youtubeUploadAuth', 'width=500,height=600');
+      
+      const authResult = await new Promise((resolve, reject) => {
+        const checkClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkClosed);
+            reject(new Error('인증이 취소되었습니다.'));
+          }
+          
+          // 팝업 창의 URL을 확인하여 토큰 추출
+          try {
+            const currentUrl = authWindow?.location.href;
+            console.log('🔍 [DEBUG] 현재 URL 확인 중...');
+            if (currentUrl && currentUrl.includes('access_token=')) {
+              console.log('✅ [DEBUG] Access Token 발견!');
+              const hashParams = new URLSearchParams(currentUrl.split('#')[1]);
+              const accessToken = hashParams.get('access_token');
+              
+              if (accessToken) {
+                console.log('🎉 [DEBUG] Google 로그인 완료! Access Token 획득');
+                clearInterval(checkClosed);
+                authWindow?.close();
+                resolve(accessToken);
+              }
+            }
+          } catch (error) {
+            // CORS 오류는 무시 (아직 리디렉션되지 않은 상태)
+          }
+        }, 500);
+      });
+
+      console.log('✅ [DEBUG] 인증 완료, 영상 업로드 진행...');
+      addLog('인증이 완료되었습니다. 영상을 업로드하는 중...', 'info');
+      
+      /// 로그인까진 완료됨 ///
+      /// 실제 유튜브 업로드 코드만 고치면됨 ///
+      
+      // 업로드 시뮬레이션 (실제 업로드는 추후 구현)
+      addLog('YouTube API를 통해 영상을 업로드합니다... (시뮬레이션)', 'generating');
       await new Promise(resolve => setTimeout(resolve, 3000));
-      const videoId = `dQw4w9WgXcQ${Math.random().toString(36).substring(2, 7)}`;
-      addLog('YouTube 업로드가 완료되었습니다!', 'success');
-      addLog(`영상 URL: https://www.youtube.com/watch?v=${videoId}`, 'success');
+      
+      const videoId = `upload_${Math.random().toString(36).substring(2, 10)}`;
+      addLog('🎉 YouTube 업로드가 완료되었습니다!', 'success');
+      addLog(`📺 영상 URL: https://www.youtube.com/watch?v=${videoId}`, 'success');
+      addLog('✅ Google 로그인이 성공적으로 작동합니다!', 'success');
+      addLog('💡 실제 업로드 기능은 추후 구현될 예정입니다.', 'info');
       
     } catch (error) {
-      console.error('YouTube 업로드 오류:', error);
-      addLog('YouTube 업로드 중 오류가 발생했습니다.', 'error');
+      console.log('💥 [DEBUG] 초기화 오류:', error);
+      addLog(`초기화 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`, 'error');
+      setIsUploadingToYoutube(false);
     } finally {
       setIsUploadingToYoutube(false);
     }
