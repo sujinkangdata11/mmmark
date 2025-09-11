@@ -48,6 +48,7 @@ export interface UploadedImage {
   id: string;
   file: File;
   dataUrl: string;
+  driveId?: string; // Google Drive 파일 ID (Google Drive에서 가져온 이미지인 경우)
 }
 
 export interface MockYouTubeVideo {

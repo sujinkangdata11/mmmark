@@ -57,12 +57,12 @@ const encryptedDefaultApiKeys: ApiKeyConfig = {
   googleDriveClientId: '',
   googleDriveClientSecret: '',
   // Twitter API OAuth 1.0a (이미지 업로드용)
-  twitterConsumerKey: '',
-  twitterConsumerSecret: '',
-  twitterAccessToken: '',
-  twitterAccessTokenSecret: '',
+  twitterConsumerKey: simpleEncrypt('OM9c8GsZeEKClBEjtJlJ25rZ4'),
+  twitterConsumerSecret: simpleEncrypt('TD4mZjpiOXl7pSdlpcLjFYBous6QQR5XdUaO9UA1YJAp3M1hve'),
+  twitterAccessToken: simpleEncrypt('1908069288256352256-ZviFYgShfvOynS5Bzbvuu2LeVgpLNQ'),
+  twitterAccessTokenSecret: simpleEncrypt('weDYIiqViNBuCaSh6t7noOoG3y5Sye2mlwmrzIv1ioTXd'),
   // Twitter API OAuth 2.0 (트윗 작성용)
-  twitterBearerToken: ''
+  twitterBearerToken: simpleEncrypt('AAAAAAAAAAAAAAAAAAAAAOIZ3wEAAAAAP2ugCojLD0E4Ki65QrqIkZWa4ak%3Du2eMfjuzsNSfqNInL5RgYMKUVgGig7FIDJjWl0W9Ts5DCkjVJH')
 };
 
 // 기본 키 값들을 해독해서 제공
@@ -122,7 +122,26 @@ export const useApiKeys = (initialKeys: string[] = []) => {
       return userKey;
     }
     
-    // 기본 키를 사용하는 경우 해독해서 반환
+    // 기본 키를 사용하는 경우 해독해서 반환 (UI에서 표시용)
+    const encryptedDefault = encryptedDefaultApiKeys[keyName];
+    return encryptedDefault ? simpleDecrypt(encryptedDefault) : '';
+  };
+
+  // UI에서 표시할 값을 가져오는 함수 (기본값 표시)
+  const getDisplayValue = (keyName: string) => {
+    const userKey = globalApiKeys[keyName];
+    
+    // 명시적으로 초기화된 경우 빈 문자열 반환
+    if (userKey === '__RESET__') {
+      return '';
+    }
+    
+    // 사용자가 입력한 키가 있고 기본값과 다른 경우
+    if (userKey && userKey !== getDefaultApiKeys()[keyName]) {
+      return userKey;
+    }
+    
+    // 기본값을 해독해서 표시
     const encryptedDefault = encryptedDefaultApiKeys[keyName];
     return encryptedDefault ? simpleDecrypt(encryptedDefault) : '';
   };
@@ -159,6 +178,7 @@ export const useApiKeys = (initialKeys: string[] = []) => {
     apiKeys,
     setApiKey,
     getApiKey,
+    getDisplayValue,
     resetApiKey,
     validateKeys
   };

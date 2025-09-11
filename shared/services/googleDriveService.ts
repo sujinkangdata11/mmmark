@@ -35,7 +35,7 @@ class GoogleDriveService {
         `client_id=${this.config.clientId}&` +
         `redirect_uri=${encodeURIComponent(window.location.origin)}&` +
         `response_type=token&` +
-        `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly')}&` +
+        `scope=${encodeURIComponent('https://www.googleapis.com/auth/drive')}&` +
         `access_type=online`;
 
       // 새 창에서 인증 진행
@@ -167,6 +167,64 @@ class GoogleDriveService {
       return new File([blob], image.name, { type: blob.type });
     } catch (error) {
       console.error('이미지 다운로드 오류:', error);
+      throw error;
+    }
+  }
+
+  async moveImageToFolder(imageId: string, targetFolderId: string | null): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error('Google Drive에 로그인이 필요합니다.');
+    }
+
+    try {
+      // 현재 이미지의 부모 폴더 정보 가져오기
+      const fileResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${imageId}?fields=parents`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+          },
+        }
+      );
+
+      if (!fileResponse.ok) {
+        throw new Error(`파일 정보 조회 실패: ${fileResponse.status}`);
+      }
+
+      const fileData = await fileResponse.json();
+      const currentParents = fileData.parents || [];
+
+      // 이미지를 새 폴더로 이동 (기존 부모에서 제거하고 새 부모 추가)
+      const updateParams = new URLSearchParams();
+      
+      // 새 부모 폴더 추가 (null이면 루트 폴더)
+      if (targetFolderId) {
+        updateParams.append('addParents', targetFolderId);
+      }
+      
+      // 기존 부모 폴더 제거
+      if (currentParents.length > 0) {
+        updateParams.append('removeParents', currentParents.join(','));
+      }
+
+      const moveResponse = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${imageId}?${updateParams.toString()}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!moveResponse.ok) {
+        throw new Error(`이미지 이동 실패: ${moveResponse.status}`);
+      }
+
+      console.log(`이미지 ${imageId}를 ${targetFolderId || 'root'} 폴더로 이동 완료`);
+    } catch (error) {
+      console.error('이미지 이동 오류:', error);
       throw error;
     }
   }

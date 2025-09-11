@@ -253,7 +253,7 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
       addLog('AI가 댓글을 작성 중입니다...', 'generating');
       
       // 사용자 편집 프롬프트를 interpolate하여 사용
-      const finalCommentPrompt = interpolatePrompt('youtube-comment', {
+      const finalCommentPrompt = interpolatePrompt('feed03-youtube-comment', {
         VIDEO_TITLE: videoDetails.title,
         VIDEO_DESCRIPTION: videoDetails.description.substring(0, 300),
         VIDEO_TAGS: videoDetails.tags?.join(', ') || '없음',
@@ -1077,23 +1077,15 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">댓글 생성 프롬프트</label>
+            {getPrompt('feed03-youtube-comment') && (
               <PromptEditor
-                prompt={{ id: 'youtube-comment', template: `이 유튜버의 타이틀과 전체 채널의 정보를 파악해서 "AutoVid"사이트를 홍보에 적합한 댓글을 아웃풋으로 출력해주세요. 
-
-AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠 서비스 입니다. 어필리에이트에 강력한 장점을 갖고있어, 영상을 자체적으로 만들고 연관된 아마존 상품을 링크로 소개해줍니다. 또한 현재 바이럴되는 쇼츠들을 토대로 쇼핑쇼츠를 제작하여 조회수도 보장됩니다. 만약 유튜브로 수익화를 원하는 분이나, 온라인으로 홍보하고싶은 자영업자가 있다면 AutoVid를 추천해주세요. 특히 쇼츠로 부수입,돈을 벌고싶거나 매일 자동 생성된다는 성실함이 필요한분들에게 추천해주세요.
-
-## 댓글을 자연스럽게 써주세요. 너무 인위적으로 홍보하면 반감이 생기니, 자연스럽게, 툭 던지듯 말해주세요. 댓글내용은 200자 이하로하고 유튜브에서 흔히 볼수 있는 문체와 정중함이 살짝 곁들여진 내용으로 작성하세요.`, name: 'AutoVid 댓글 생성', description: 'AutoVid 서비스 홍보용 댓글 생성 프롬프트' }}
-                value={getPrompt('youtube-comment')?.template || `이 유튜버의 타이틀과 전체 채널의 정보를 파악해서 "AutoVid"사이트를 홍보에 적합한 댓글을 아웃풋으로 출력해주세요. 
-
-AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠 서비스 입니다. 어필리에이트에 강력한 장점을 갖고있어, 영상을 자체적으로 만들고 연관된 아마존 상품을 링크로 소개해줍니다. 또한 현재 바이럴되는 쇼츠들을 토대로 쇼핑쇼츠를 제작하여 조회수도 보장됩니다. 만약 유튜브로 수익화를 원하는 분이나, 온라인으로 홍보하고싶은 자영업자가 있다면 AutoVid를 추천해주세요. 특히 쇼츠로 부수입,돈을 벌고싶거나 매일 자동 생성된다는 성실함이 필요한분들에게 추천해주세요.
-
-## 댓글을 자연스럽게 써주세요. 너무 인위적으로 홍보하면 반감이 생기니, 자연스럽게, 툭 던지듯 말해주세요. 댓글내용은 200자 이하로하고 유튜브에서 흔히 볼수 있는 문체와 정중함이 살짝 곁들여진 내용으로 작성하세요.`}
-                onChange={(value) => updatePrompt('youtube-comment', value)}
-                onReset={() => resetPrompt('youtube-comment')}
+                prompt={getPrompt('feed03-youtube-comment')!}
+                value={getPrompt('feed03-youtube-comment')!.template}
+                onChange={(value) => updatePrompt('feed03-youtube-comment', value)}
+                onReset={() => resetPrompt('feed03-youtube-comment')}
+                feedType="youtube"
               />
-            </div>
+            )}
               
             <button
               onClick={() => handleWriteComment()}

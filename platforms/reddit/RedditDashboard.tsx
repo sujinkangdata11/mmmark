@@ -109,7 +109,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
       `state=${state}&` +
       `redirect_uri=${encodeURIComponent('http://localhost:5175/login/callback')}&` +
       `duration=permanent&` +
-      `scope=identity,submit,save`;
+      `scope=identity,submit,save,read`;
 
     window.open(authUrl, '_self');
   };
@@ -218,7 +218,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
         allPostsInfo += `   작성자: ${post.author}, 점수: ${post.score}, 댓글: ${post.num_comments}\n\n`;
       });
 
-      const finalSuitabilityPrompt = interpolatePrompt('reddit-suitability', {
+      const finalSuitabilityPrompt = interpolatePrompt('feed01-reddit-suitability', {
         POST_COUNT: fetchedPosts.length.toString(),
         POST_TITLE: '전체 게시물 목록',
         POST_CONTENT: allPostsInfo
@@ -296,7 +296,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
       const post = suitablePosts[postIndex];
       const reason = post.reason || '';
       
-      const commentPrompt = interpolatePrompt('reddit-comment', {
+      const commentPrompt = interpolatePrompt('feed01-reddit-comment', {
         POST_INDEX: (post.originalIndex || postIndex + 1).toString(),
         REASON: reason,
         POST_TITLE: post.title,
@@ -350,7 +350,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
     }, 1500);
 
     try {
-      const translationPrompt = interpolatePrompt('reddit-translation', {
+      const translationPrompt = interpolatePrompt('feed01-reddit-translation', {
         COMMENT: comment
       });
 
@@ -553,7 +553,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
           
           // AI 적합성 판단
           addLog('게시글 적합성 판단을 위해 AI 호출 중...', 'generating');
-          const finalSuitabilityPrompt = interpolatePrompt('reddit-suitability', {
+          const finalSuitabilityPrompt = interpolatePrompt('feed01-reddit-suitability', {
             POST_COUNT: fetchedPosts.length.toString(),
             POST_TITLE: post.title,
             POST_CONTENT: post.selftext || '(링크 게시물)'
@@ -570,7 +570,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
 
           // 댓글 생성
           addLog('댓글 생성을 위해 AI 호출 중...', 'generating');
-          const finalCommentPrompt = interpolatePrompt('reddit-comment', {
+          const finalCommentPrompt = interpolatePrompt('feed01-reddit-comment', {
             POST_TITLE: post.title,
             POST_CONTENT: post.selftext || '(링크 게시물)'
           });
@@ -705,7 +705,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
     {
       id: 'fetch-posts',
       title: '게시물 가져오기',
-      description: 'Reddit에서 최신 게시물을 가져와 댓글 작성 대상을 확인합니다.',
+      description: 'Reddit에서 최신 게시물을 가져와 댓글 작성 대상을 확인합니다. (포트 3003 서버 실행 필요)',
       content: (
         <div className="space-y-4">
           <div className="space-y-4">
@@ -820,12 +820,13 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
       description: 'AI가 게시물의 적합성을 판단할 프롬프트를 설정합니다.',
       content: (
         <div className="space-y-4">
-          {getPrompt('reddit-suitability') && (
+          {getPrompt('feed01-reddit-suitability') && (
             <PromptEditor
-              prompt={getPrompt('reddit-suitability')!}
-              value={getPrompt('reddit-suitability')!.template}
-              onChange={(value) => updatePrompt('reddit-suitability', value)}
-              onReset={() => resetPrompt('reddit-suitability')}
+              prompt={getPrompt('feed01-reddit-suitability')!}
+              value={getPrompt('feed01-reddit-suitability')!.template}
+              onChange={(value) => updatePrompt('feed01-reddit-suitability', value)}
+              onReset={() => resetPrompt('feed01-reddit-suitability')}
+              feedType="reddit"
             />
           )}
           
@@ -863,12 +864,13 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
       content: (
         <div className="space-y-4">
           {/* 댓글 작성 프롬프트 편집기 */}
-          {getPrompt('reddit-comment') ? (
+          {getPrompt('feed01-reddit-comment') ? (
             <PromptEditor
-              prompt={getPrompt('reddit-comment')!}
-              value={getPrompt('reddit-comment')!.template}
-              onChange={(value) => updatePrompt('reddit-comment', value)}
-              onReset={() => resetPrompt('reddit-comment')}
+              prompt={getPrompt('feed01-reddit-comment')!}
+              value={getPrompt('feed01-reddit-comment')!.template}
+              onChange={(value) => updatePrompt('feed01-reddit-comment', value)}
+              onReset={() => resetPrompt('feed01-reddit-comment')}
+              feedType="reddit"
             />
           ) : (
             <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
@@ -999,12 +1001,13 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
       content: (
         <div className="space-y-4">
           {/* 영어 번역 프롬프트 편집기 */}
-          {getPrompt('reddit-translation') ? (
+          {getPrompt('feed01-reddit-translation') ? (
             <PromptEditor
-              prompt={getPrompt('reddit-translation')!}
-              value={getPrompt('reddit-translation')!.template}
-              onChange={(value) => updatePrompt('reddit-translation', value)}
-              onReset={() => resetPrompt('reddit-translation')}
+              prompt={getPrompt('feed01-reddit-translation')!}
+              value={getPrompt('feed01-reddit-translation')!.template}
+              onChange={(value) => updatePrompt('feed01-reddit-translation', value)}
+              onReset={() => resetPrompt('feed01-reddit-translation')}
+              feedType="reddit"
             />
           ) : (
             <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">

@@ -19,6 +19,14 @@ app.use(express.urlencoded({ extended: true }));
 const REDDIT_CLIENT_ID = 'TMS9xFqgoJ-RSRof8Cba_g';
 const REDDIT_CLIENT_SECRET = 'ytSHhdne8y8bl4G_hr3yy9mGqXfShg';
 
+// 메모리에 토큰 저장 (프로덕션에서는 데이터베이스 사용)
+let storedTokens = {
+  access_token: null,
+  refresh_token: null,
+  expires_at: null,
+  username: null
+};
+
 // Reddit OAuth 토큰 교환 엔드포인트
 app.get('/login_reddit', async (req, res) => {
   console.log('🚀 [SERVER] Reddit 토큰 교환 요청 받음');
@@ -87,6 +95,20 @@ app.get('/login_reddit', async (req, res) => {
       console.warn('⚠️ [SERVER] 사용자 정보 조회 실패:', userResponse.status);
     }
 
+    // 토큰을 메모리에 저장 (만료 시간 계산)
+    const expiresAt = Date.now() + (tokenData.expires_in * 1000);
+    storedTokens = {
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token,
+      expires_at: expiresAt,
+      username: userData?.name || null
+    };
+    
+    console.log('💾 [SERVER] 토큰 저장 완료:', {
+      username: storedTokens.username,
+      expires_at: new Date(expiresAt).toISOString()
+    });
+
     // 성공 응답
     res.json({
       success: true,
@@ -124,15 +146,21 @@ app.get('/api/reddit/posts', async (req, res) => {
       throw new Error('subreddit 파라미터가 필요합니다');
     }
     
-    // Reddit 공개 JSON API 호출
-    const cleanSubredditName = subreddit.replace(/^r\//, '');
-    const apiUrl = `https://www.reddit.com/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
+    // 저장된 토큰 확인
+    if (!storedTokens.access_token || Date.now() > storedTokens.expires_at) {
+      throw new Error('유효한 OAuth 토큰이 없습니다. 다시 로그인해주세요.');
+    }
     
-    console.log(`🔍 [SERVER] Reddit API 호출: ${apiUrl}`);
+    // Reddit OAuth API 호출
+    const cleanSubredditName = subreddit.replace(/^r\//, '');
+    const apiUrl = `https://oauth.reddit.com/r/${cleanSubredditName}/${sort}.json?limit=${limit}`;
+    
+    console.log(`🔍 [SERVER] Reddit OAuth API 호출: ${apiUrl}`);
     
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
+        'Authorization': `bearer ${storedTokens.access_token}`,
         'User-Agent': 'AIMarketingHub/1.0 (by /u/Plenty_Way_5213)',
         'Accept': 'application/json',
       }
