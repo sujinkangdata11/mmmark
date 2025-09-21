@@ -37,6 +37,7 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config, onBack, hid
   const { logs, addLog, clearLogs } = useLogger();
   const { isAutomating, startAutomation, stopAutomation, isRunning } = useAutomation();
   const { getApiKey } = useApiKeys(['youtube']);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
   
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<YouTubeSearchResult | null>(null);
@@ -1327,23 +1328,40 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-6 bg-white">
-        <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
-          {cards.map((card, index) => (
-            <div key={card.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow min-h-[650px]">
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                  {index + 1}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">{card.title}</h3>
-              </div>
-              {card.content}
+      <div className="pb-6 bg-white px-6 lg:px-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveCardIndex(prev => Math.max(prev - 1, 0))}
+              disabled={activeCardIndex === 0}
+              className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeCardIndex === 0 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
+            >
+              ← 이전
+            </button>
+            <div className="text-sm text-gray-500">
+              {activeCardIndex + 1} / {cards.length}
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => setActiveCardIndex(prev => Math.min(prev + 1, cards.length - 1))}
+              disabled={activeCardIndex === cards.length - 1}
+              className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeCardIndex === cards.length - 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
+            >
+              다음 →
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6 w-full hover:shadow-lg transition-shadow min-h-[250px]">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                {activeCardIndex + 1}
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">{cards[activeCardIndex].title}</h3>
+            </div>
+            {cards[activeCardIndex].content}
+          </div>
         </div>
-      </div>
-      <div className="text-center text-gray-500 text-sm mt-4">
-        ← → 좌우로 스크롤하여 각 단계를 진행하세요
       </div>
     </div>
   );

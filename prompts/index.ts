@@ -8,6 +8,7 @@ import { FEED02_TWITTER_CARD05_PROMPTS, FEED02_TWITTER_CARD05_FAVORITE_PROMPTS }
 import { FEED03_YOUTUBE_CARD01_PROMPTS, FEED03_YOUTUBE_CARD01_FAVORITE_PROMPTS } from './feed03-youtube-card01';
 import { FEED04_UPLOAD_CARD01_PROMPTS, FEED04_UPLOAD_CARD01_FAVORITE_PROMPTS } from './feed04-upload-card01';
 import { PromptConfig } from '../config/prompts';
+import { FavoritePromptOption } from './types';
 
 // 전체 프롬프트 통합 (기존 구조 유지)
 export const ALL_PROMPTS = {
@@ -44,7 +45,7 @@ Tone: "{TONE}"`,
 };
 
 // 카드별 즐겨찾는 프롬프트 매핑 (Feed 기반)
-const CARD_FAVORITE_PROMPTS = {
+const CARD_FAVORITE_PROMPTS: Record<string, Array<string | FavoritePromptOption>> = {
   // Feed01 Reddit
   'feed01-reddit-suitability': FEED01_REDDIT_CARD05_FAVORITE_PROMPTS,
   'feed01-reddit-comment': FEED01_REDDIT_CARD06_FAVORITE_PROMPTS,
@@ -73,6 +74,6 @@ const CARD_FAVORITE_PROMPTS = {
 };
 
 // 특정 프롬프트 ID로 즐겨찾는 프롬프트 가져오기 (개선된 버전)
-export const getFavoritePrompts = (feed: string, promptId: string): string[] => {
+export const getFavoritePrompts = (feed: string, promptId: string): Array<string | FavoritePromptOption> => {
   return CARD_FAVORITE_PROMPTS[promptId as keyof typeof CARD_FAVORITE_PROMPTS] || [];
 };

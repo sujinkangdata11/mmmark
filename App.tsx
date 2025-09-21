@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { AUTOMATION_CONFIGS } from './constants';
 import { AutomationConfig, AutomationType, DailyStat, EnrichedStat } from './types';
 import Dashboard from './shared/components/Dashboard';
@@ -23,7 +23,7 @@ const AutomationCard: React.FC<AutomationCardProps> = ({ stat, onToggle, isExpan
   const { id, title, description, icon } = stat;
   
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+    <div id={id} className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
       {/* 대시보드 제목 및 진행률 표시 */}
       <div className="py-6 border-b border-gray-200">
         <div className="flex items-center mb-4">
@@ -81,6 +81,14 @@ const App: React.FC = () => {
     setExpandedCard(expandedCard === id ? null : id);
   };
 
+  const handleScrollTo = useCallback((targetId: AutomationType) => {
+    setExpandedCard(targetId);
+    const target = document.getElementById(targetId);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   const enrichedStats = useMemo((): EnrichedStat[] => {
     return AUTOMATION_CONFIGS.map(config => {
       const stat = dailyStats.find(s => s.id === config.id);
@@ -93,25 +101,54 @@ const App: React.FC = () => {
   }, [dailyStats]);
 
   return (
-    <div className="min-h-screen bg-white p-[100px]">
-      {/* 헤더 - 전체 화면 너비 */}
-      <div className="text-center py-8 bg-white border-b border-gray-200 mb-8">
-        <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-          AI 마케팅 자동화 허브
-        </h1>
-        <p className="text-sm text-gray-600">
-          반복적인 마케팅 작업을 자동화하여 시간을 절약하고 효율성을 높이세요.
-        </p>
-      </div>
-      
-      <div className="flex gap-8">
-        {/* 왼쪽 API 키 관리 블럭 */}
-        <div className="flex-shrink-0 -mt-10">
-          <Sidebar />
+    <div className="min-h-screen bg-white px-8 py-16">
+      <div className="max-w-7xl mx-auto space-y-12">
+        {/* 헤더 */}
+        <div className="text-center py-8 bg-white border border-gray-200 rounded-2xl shadow-sm">
+          <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+            AI 마케팅 자동화 허브
+          </h1>
+          <p className="text-sm text-gray-600">
+            반복적인 마케팅 작업을 자동화하여 시간을 절약하고 효율성을 높이세요.
+          </p>
         </div>
-        
-        {/* 오른쪽 대시보드 리스트 */}
-        <div className="flex-1 -mt-[16px] -ml-[20px]">
+
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => handleScrollTo('reddit-comment')}
+            className="px-6 py-3 text-sm font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-colors"
+          >
+            [레딧]
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollTo('twitter-post')}
+            className="px-6 py-3 text-sm font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-colors"
+          >
+            [ Twitter & Threads ]
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollTo('youtube-comment')}
+            className="px-6 py-3 text-sm font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-colors"
+          >
+            [YouTube 자동 댓글]
+          </button>
+          <button
+            type="button"
+            onClick={() => handleScrollTo('youtube-upload')}
+            className="px-6 py-3 text-sm font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded-full hover:bg-cyan-100 transition-colors"
+          >
+            [유튜브, 인스타그램, 쓰레드, 트위터 영상업로드]
+          </button>
+        </div>
+
+        {/* 상단 API 키 관리 패널 */}
+        <Sidebar />
+
+        {/* 대시보드 리스트 */}
+        <div className="space-y-8">
           {enrichedStats.map(stat => (
             <AutomationCard 
               key={stat.id} 

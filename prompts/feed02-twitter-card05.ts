@@ -1,4 +1,5 @@
 import { PromptConfig } from '../config/prompts';
+import { FavoritePromptOption } from './types';
 
 // Feed02 Twitter 5번 카드: 수익 분석 프롬프트
 export const FEED02_TWITTER_CARD05_PROMPTS: PromptConfig[] = [
@@ -33,9 +34,10 @@ ex)결과 예시
 ];
 
 // Feed02 Twitter 5번 카드 즐겨찾는 프롬프트들
-export const FEED02_TWITTER_CARD05_FAVORITE_PROMPTS = [
-  // 디폴트 프롬프트 (첫 번째)
-  `주어진 정보를 가지고 아래 [빈칸]을 채워서 예시처럼 만드세요.
+export const FEED02_TWITTER_CARD05_FAVORITE_PROMPTS: FavoritePromptOption[] = [
+  {
+    title: '디폴트 프롬프트',
+    body: `주어진 정보를 가지고 아래 [빈칸]을 채워서 예시처럼 만드세요.
 -----------------------------
 🚨 이 채널은 개설 [기간] 만에 '광고 + 쇼핑제휴' 으로  [$총합]를 만들었을 가능성이 큽니다!
 
@@ -56,10 +58,18 @@ ex)결과 예시
 🛒 쇼핑제휴 수익: ~ $11,944
 = 총 수익: ~$13,038
 
-"1000"라고 댓글 다세요.(방법 알려줌) 🚨`,
-  
-  // 커스텀 프롬프트들
-  "채널 수익 분석을 정확한 수치로 계산해주세요.",
-  "쇼핑 쇼츠 채널의 수익 잠재력을 분석해주세요.",
-  "AutoVid를 활용한 수익 창출 가능성을 보여주세요."
+"1000"라고 댓글 다세요.(방법 알려줌) 🚨`
+  },
+  {
+    title: '정밀 계산형',
+    body: '쇼츠 RPM, 제휴 전환율 등 수치 가정을 명시하고 정확히 계산한 뒤 근거 문장을 작성해주세요.'
+  },
+  {
+    title: '쇼핑 제휴 강조형',
+    body: '제휴 수익을 중심으로 어떤 상품 구성이 잘 팔리는지 짧게 언급하며 계산해주세요.'
+  },
+  {
+    title: '위험 요소 경고 포함',
+    body: '수익 계산과 함께 변동성(조회수 하락, 제휴 전환율 하락 등) 가능성을 한 줄로 경고해주세요.'
+  }
 ];

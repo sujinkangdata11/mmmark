@@ -9,7 +9,7 @@ interface LogDisplayProps {
 
 const LogDisplay: React.FC<LogDisplayProps> = ({ logs, onClear }) => {
   return (
-    <div className="mt-6 bg-gray-50 rounded-lg p-4 flex-grow h-96 flex flex-col border border-gray-300">
+    <div className="mt-6 bg-gray-50 rounded-lg p-4 flex-grow min-h-[200px] max-h-[320px] flex flex-col border border-gray-300">
       <div className="flex justify-between items-center border-b border-gray-300 pb-2 mb-3">
         <h3 className="text-lg font-semibold text-gray-800">실시간 로그</h3>
         {onClear && (

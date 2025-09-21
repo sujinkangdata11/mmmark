@@ -222,10 +222,10 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config }) => {
 
   return (
     <div className="w-full bg-white">
-      <div className="overflow-x-auto pb-6 bg-white">
-        <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
+      <div className="pb-6 bg-white px-6 lg:px-10">
+        <div className="flex flex-col gap-6">
           {steps.map((step, index) => (
-            <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow">
+            <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-full hover:shadow-lg transition-shadow">
               <div className="flex items-center mb-4">
                 <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
                   {index + 1}
@@ -236,9 +236,6 @@ const YouTubeDashboard: React.FC<YouTubeDashboardProps> = ({ config }) => {
             </div>
           ))}
         </div>
-      </div>
-      <div className="text-center text-gray-500 text-sm mt-4">
-        ← → 좌우로 스크롤하여 각 단계를 진행하세요
       </div>
     </div>
   );

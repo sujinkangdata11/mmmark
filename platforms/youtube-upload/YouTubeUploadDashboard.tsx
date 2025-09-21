@@ -42,6 +42,7 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
   const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const youtubeFileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsInitialized(true), 500);
@@ -1127,21 +1128,41 @@ AutoVid는 단 한번의 클릭으로 자동 생성되는 유튜브 쇼핑쇼츠
       />
       
       <div className="w-full bg-white">
-        <div className="overflow-x-auto pb-6 bg-white">
-          <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
-            {steps.map((step, index) => (
-              <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 w-96 flex-shrink-0 hover:shadow-lg transition-shadow min-h-[650px]">
-                <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                    {index + 1}
-                  </div>
-                  <h3 className="text-lg font-bold text-black">{step.title}</h3>
-                </div>
-                <div className="h-full">
-                  {step.content}
-                </div>
+        <div className="pb-6 bg-white px-6 lg:px-10">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <button
+                type="button"
+                onClick={() => setActiveStepIndex(prev => Math.max(prev - 1, 0))}
+                disabled={activeStepIndex === 0}
+                className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeStepIndex === 0 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
+              >
+                ← 이전
+              </button>
+              <div className="text-sm text-gray-500">
+                {activeStepIndex + 1} / {steps.length}
               </div>
-            ))}
+              <button
+                type="button"
+                onClick={() => setActiveStepIndex(prev => Math.min(prev + 1, steps.length - 1))}
+                disabled={activeStepIndex === steps.length - 1}
+                className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeStepIndex === steps.length - 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
+              >
+                다음 →
+              </button>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 p-6 w-full hover:shadow-lg transition-shadow min-h-[250px]">
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                  {activeStepIndex + 1}
+                </div>
+                <h3 className="text-lg font-bold text-black">{steps[activeStepIndex].title}</h3>
+              </div>
+              <div className="h-full">
+                {steps[activeStepIndex].content}
+              </div>
+            </div>
           </div>
         </div>
       </div>

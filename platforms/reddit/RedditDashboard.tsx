@@ -43,6 +43,22 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
   const [translationLoadingMessage, setTranslationLoadingMessage] = useState<string>('');
   const [deployingIndex, setDeployingIndex] = useState<number | null>(null);
   const [deployedComments, setDeployedComments] = useState<{postIndex: number, redditLink: string, commentId: string, translatedComment: string}[]>([]);
+  const [showServerInstructions, setShowServerInstructions] = useState<boolean>(false);
+  const [isServerCommandCopied, setIsServerCommandCopied] = useState<boolean>(false);
+  const [activeStepIndex, setActiveStepIndex] = useState(0);
+
+  const serverCommandText = `cd /Users/sujin/Desktop/ai-marketing-automation-hub\nnpm run reddit-server`;
+
+  const handleCopyServerCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(serverCommandText);
+      setIsServerCommandCopied(true);
+      setTimeout(() => setIsServerCommandCopied(false), 2000);
+    } catch (error) {
+      console.error('클립보드 복사 실패:', error);
+      alert('클립보드 복사에 실패했어요. 수동으로 복사해주세요.');
+    }
+  };
 
   // Reddit 서비스 초기화
   React.useEffect(() => {
@@ -611,7 +627,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
               📌 <strong>댓글 작성</strong>을 위해서는 Reddit API 키가 필요합니다.
             </p>
           </div>
-          <div style={{ height: '300px' }}>
+          <div style={{ height: '220px' }}>
             <LogDisplay logs={logs} />
           </div>
         </div>
@@ -712,6 +728,13 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
             <p className="text-gray-600">API 연결을 테스트하고 게시물을 가져옵니다.</p>
             
             <button 
+              onClick={() => setShowServerInstructions(true)}
+              className="w-full px-6 py-3 bg-gray-900 hover:bg-black text-white font-semibold rounded-md transition-colors"
+            >
+              ⚙️ 포트 3003 서버 실행 안내
+            </button>
+
+            <button 
               onClick={handleRedditLogin}
               className="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-md transition-colors"
             >
@@ -721,7 +744,7 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
             <button 
               onClick={handleTestConnection}
               disabled={isAutomating}
-              className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-md transition-colors disabled:bg-gray-400"
+              className="w-full px-6 py-3 bg-white text-purple-600 border border-purple-500 font-semibold rounded-md transition-colors hover:bg-purple-50 disabled:bg-gray-200 disabled:text-gray-400 disabled:border-gray-300"
             >
               {isAutomating ? '테스트 중...' : '🔧 API 연결 테스트'}
             </button>
@@ -1161,30 +1184,44 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
 
   return (
     <div className="w-full bg-white">
-      {/* 가로 스크롤 카드 컨테이너 */}
-      <div className="overflow-x-auto pb-6 bg-white">
-        <div className="flex space-x-6 min-w-max pl-6 pr-32 bg-white">
-          {steps.map((step, index) => (
-            <div 
-              key={step.id}
-              className={`bg-white rounded-xl border border-gray-200 p-8 w-96 flex-shrink-0 hover:shadow-lg transition-shadow flex flex-col ${
-                step.id === 'posts-review' ? 'min-h-fit' : 'min-h-[650px]'
-              }`}
+      <div className="pb-6 bg-white px-6 lg:px-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => setActiveStepIndex(prev => Math.max(prev - 1, 0))}
+              disabled={activeStepIndex === 0}
+              className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeStepIndex === 0 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
             >
-              <div className="flex items-center mb-4">
-                <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
-                  {index + 1}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">{step.title}</h3>
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-6">{step.description}</p>
-              
-              <div className="space-y-4 flex-1">
-                {step.content}
-              </div>
+              ← 이전
+            </button>
+            <div className="text-sm text-gray-500">
+              {activeStepIndex + 1} / {steps.length}
             </div>
-          ))}
+            <button
+              type="button"
+              onClick={() => setActiveStepIndex(prev => Math.min(prev + 1, steps.length - 1))}
+              disabled={activeStepIndex === steps.length - 1}
+              className={`px-3 py-2 rounded-full border text-sm font-semibold transition-colors ${activeStepIndex === steps.length - 1 ? 'text-gray-300 border-gray-200 cursor-not-allowed' : 'text-cyan-600 border-cyan-200 hover:bg-cyan-50'}`}
+            >
+              다음 →
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-8 w-full hover:shadow-lg transition-shadow flex flex-col min-h-[250px]">
+            <div className="flex items-center mb-4">
+              <div className="w-8 h-8 bg-cyan-600 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3">
+                {activeStepIndex + 1}
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">{steps[activeStepIndex].title}</h3>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">{steps[activeStepIndex].description}</p>
+
+            <div className="space-y-4 flex-1">
+              {steps[activeStepIndex].content}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1264,7 +1301,58 @@ const RedditDashboard: React.FC<RedditDashboardProps> = ({ config, onBack, hideB
           </div>
         </div>
       )}
-      
+
+      {showServerInstructions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl space-y-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">포트 3003 서버 실행 안내</h2>
+                <p className="mt-1 text-sm text-gray-600">Reddit OAuth 토큰 교환을 위해 로컬 Reddit 서버를 켜주세요.</p>
+              </div>
+              <button
+                onClick={() => setShowServerInstructions(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <ol className="space-y-3 text-sm text-gray-700 list-decimal list-inside">
+              <li>터미널을 열어요.</li>
+              <li>
+                아래 순서대로 명령어를 입력하고 각각 엔터를 눌러 실행하세요.
+                <div className="mt-2 relative bg-gray-900 text-gray-100 rounded-lg px-3 py-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={handleCopyServerCommand}
+                    className="absolute right-2 top-2 text-[10px] uppercase tracking-wide bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded"
+                  >
+                    {isServerCommandCopied ? '복사됨!' : '복사'}
+                  </button>
+                  <code className="whitespace-pre-line block pr-16">
+{serverCommandText}
+                  </code>
+                </div>
+                <p className="mt-2 text-xs text-gray-400">한 줄로 실행하고 싶다면 <code className="bg-gray-800 text-gray-100 px-1 py-0.5 rounded">cd ... && npm run reddit-server</code> 형식으로 사용할 수 있어요.</p>
+              </li>
+              <li className="text-sm text-gray-600">
+                프론트와 서버를 동시에 실행하려면 <code className="bg-gray-100 px-1 py-0.5 rounded">npm run dev-all</code> 을 사용해도 좋아요.
+              </li>
+            </ol>
+
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setShowServerInstructions(false)}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 스크롤 힌트 */}
       <div className="text-center text-gray-500 text-sm">
         ← → 좌우로 스크롤하여 각 단계를 진행하세요
